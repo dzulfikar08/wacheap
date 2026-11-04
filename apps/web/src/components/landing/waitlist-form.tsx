@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { orpc } from "@/utils/orpc";
 
@@ -14,6 +14,26 @@ const CHANNELS = [
 
 type Channel = Exclude<(typeof CHANNELS)[number][0], "">;
 
+type Problem = { field: "whatsapp" | "email" | null; message: string };
+
+/** What went wrong, in words the visitor can act on. */
+function describe(error: unknown): Problem {
+  const status = (error as { status?: number } | null)?.status;
+  const detail = JSON.stringify((error as { data?: unknown } | null)?.data ?? "");
+  if (status === 429)
+    return { field: null, message: "Terlalu banyak percobaan. Tunggu satu menit, lalu coba lagi." };
+  if (status === 400) {
+    if (detail.includes("whatsapp")) {
+      return { field: "whatsapp", message: "Nomor WhatsApp tidak valid. Contoh: 0812 3456 7890." };
+    }
+    return { field: "email", message: "Alamat email tidak valid." };
+  }
+  return {
+    field: null,
+    message: "Belum terkirim karena koneksi atau server bermasalah. Coba lagi.",
+  };
+}
+
 export function WaitlistForm() {
   const id = useId();
   const [email, setEmail] = useState("");
@@ -21,10 +41,20 @@ export function WaitlistForm() {
   const [shop, setShop] = useState("");
   const [channel, setChannel] = useState<Channel | "">("");
   const join = useMutation(orpc.waitlist.join.mutationOptions());
+  const done = useRef<HTMLParagraphElement>(null);
+  const problem = join.isError ? describe(join.error) : null;
+  const errorId = `${id}-error`;
+  const invalid = (field: Problem["field"]) =>
+    problem?.field === field ? { "aria-invalid": true as const, "aria-describedby": errorId } : {};
+
+  // The form is replaced on success; keep keyboard focus on the confirmation instead of dropping it to <body>.
+  useEffect(() => {
+    if (join.isSuccess) done.current?.focus();
+  }, [join.isSuccess]);
 
   if (join.isSuccess) {
     return (
-      <p className="wc-form-done" role="status">
+      <p className="wc-form-done" ref={done} tabIndex={-1}>
         Terdaftar. Kami kabari lewat email saat akses kamu siap.
       </p>
     );
@@ -50,6 +80,7 @@ export function WaitlistForm() {
           type="email"
           required
           autoComplete="email"
+          {...invalid("email")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -61,6 +92,7 @@ export function WaitlistForm() {
           type="tel"
           autoComplete="tel"
           placeholder="0812…"
+          {...invalid("whatsapp")}
           value={whatsapp}
           onChange={(e) => setWhatsapp(e.target.value)}
         />
@@ -91,9 +123,9 @@ export function WaitlistForm() {
       <button className="wc-button" type="submit" disabled={join.isPending}>
         {join.isPending ? "Mendaftarkan…" : "Daftar akses awal"}
       </button>
-      {join.isError ? (
-        <p className="wc-form-error" role="alert">
-          Belum terdaftar: periksa email dan nomor WhatsApp, lalu coba lagi.
+      {problem ? (
+        <p className="wc-form-error" id={errorId} role="alert">
+          {problem.message}
         </p>
       ) : null}
     </form>

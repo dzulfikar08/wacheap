@@ -3,27 +3,31 @@ import { z } from "zod";
 
 import { publicProcedure } from "../index";
 
-/** Indonesian mobile number in any common form (08…, +62…, 62…) to 62…; null when it isn't one. */
+/**
+ * Indonesian mobile number in any common form (0812…, +62 812…, +62 0812…, 0062 812…, 812…) to 62…; null when it
+ * isn't one.
+ */
 export function normaliseWhatsapp(input: string): string | null {
-  const digits = input.replace(/[\s().-]/g, "").replace(/^\+/, "");
-  const national = digits.startsWith("62")
-    ? digits.slice(2)
-    : digits.startsWith("0")
-      ? digits.slice(1)
-      : digits;
-  return /^8\d{7,12}$/.test(national) ? `62${national}` : null;
+  let digits = input.replace(/[\s().-]/g, "").replace(/^\+/, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (digits.startsWith("62")) digits = digits.slice(2);
+  if (digits.startsWith("0")) digits = digits.slice(1);
+  return /^8\d{7,12}$/.test(digits) ? `62${digits}` : null;
 }
 
 export const joinWaitlistInput = z.object({
-  email: z
-    .email()
-    .max(254)
-    .transform((e) => e.trim().toLowerCase()),
+  email: z.string().trim().toLowerCase().pipe(z.email().max(254)),
   whatsapp: z
     .string()
     .max(32)
     .optional()
-    .refine((v) => !v || normaliseWhatsapp(v) !== null, "Nomor WhatsApp tidak valid"),
+    .transform((v, ctx) => {
+      if (!v) return null;
+      const normalised = normaliseWhatsapp(v);
+      if (!normalised)
+        ctx.addIssue({ code: "custom", message: "Nomor WhatsApp tidak valid", path: [] });
+      return normalised;
+    }),
   shop: z.string().trim().max(120).optional(),
   channel: z.enum(["marketplace", "instagram", "tiktok", "website", "other"]).optional(),
 });
@@ -35,7 +39,7 @@ export const waitlistRouter = {
       .values({
         id: crypto.randomUUID(),
         email: input.email,
-        whatsapp: input.whatsapp ? normaliseWhatsapp(input.whatsapp) : null,
+        whatsapp: input.whatsapp,
         shop: input.shop || null,
         channel: input.channel ?? null,
       })

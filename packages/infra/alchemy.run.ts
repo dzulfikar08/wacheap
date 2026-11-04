@@ -34,6 +34,11 @@ export const server = Cloudflare.Worker("server", {
     BROADCAST_QUEUE: broadcastQueue,
     // One room per workspace: live inbox updates to every agent's open tab over hibernating WebSockets.
     INBOX: Cloudflare.DurableObject<InboxRoom>("InboxRoom"),
+    // Public sign-up endpoints: 5 calls a minute per IP (Cloudflare counts per location, so it's approximate).
+    SIGNUP_LIMIT: Cloudflare.RateLimit("SIGNUP_LIMIT", {
+      namespaceId: 1001,
+      simple: { limit: 5, period: 60 },
+    }),
     CORS_ORIGIN: Config.String("CORS_ORIGIN"),
     BETTER_AUTH_SECRET: Config.Redacted("BETTER_AUTH_SECRET"),
     BETTER_AUTH_URL: Cloudflare.Worker.URL,

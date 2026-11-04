@@ -51,6 +51,15 @@ export const rpcHandler = new RPCHandler(appRouter, {
   ],
 });
 
+// The waitlist is a public insert: cap it per IP before it reaches the database.
+app.use("/rpc/waitlist/*", async (c, next) => {
+  const ip = c.req.header("CF-Connecting-IP") ?? "unknown";
+  const { success } = await ENV.SIGNUP_LIMIT.limit({ key: `waitlist:${ip}` });
+  if (!success)
+    return c.json({ message: "Terlalu banyak percobaan. Coba lagi sebentar lagi." }, 429);
+  await next();
+});
+
 app.use("/*", async (c, next) => {
   const context = await createContext({ context: c });
 

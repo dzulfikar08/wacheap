@@ -10,6 +10,7 @@ import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { Toaster } from "@wacheap/ui/components/sonner";
 
 import Header from "@/components/header";
+import { PUBLIC_PATHS } from "@/components/landing/site-chrome";
 import { ThemeProvider } from "@/components/theme-provider";
 import type { orpc } from "@/utils/orpc";
 
@@ -43,9 +44,9 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 });
 
 function RootComponent() {
-  // The landing page draws its own header and colours; the app chrome starts at sign-in.
-  const isLanding = useRouterState({ select: (s) => s.location.pathname === "/" });
-  if (isLanding) {
+  // Public pages draw their own header and colours; the app chrome starts at sign-in.
+  const isPublic = useRouterState({ select: (s) => PUBLIC_PATHS.has(s.location.pathname) });
+  if (isPublic) {
     return (
       <>
         <HeadContent />

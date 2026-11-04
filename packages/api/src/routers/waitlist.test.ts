@@ -7,7 +7,14 @@ import { normaliseWhatsapp, waitlistRouter } from "./waitlist";
 
 describe("normaliseWhatsapp", () => {
   test("accepts the usual Indonesian forms", () => {
-    for (const n of ["0812-3456-7890", "+62 812 3456 7890", "6281234567890", "81234567890"]) {
+    for (const n of [
+      "0812-3456-7890",
+      "+62 812 3456 7890",
+      "+62 0812 3456 7890",
+      "0062 812 3456 7890",
+      "6281234567890",
+      "81234567890",
+    ]) {
       expect(normaliseWhatsapp(n)).toBe("6281234567890");
     }
   });
@@ -36,6 +43,17 @@ describe("waitlist.join", () => {
       whatsapp: "6281234567890",
       channel: "marketplace",
     });
+  });
+
+  test("trims and lowercases the email", async () => {
+    const { db, client } = await d1TestDb();
+    await call(
+      waitlistRouter.join,
+      { email: "  Seller@Example.TEST " },
+      { context: { db, session: null } },
+    );
+    const rows = await client.execute("select email, whatsapp from waitlist");
+    expect(rows.rows[0]).toMatchObject({ email: "seller@example.test", whatsapp: null });
   });
 
   test("rejects an invalid WhatsApp number", async () => {
