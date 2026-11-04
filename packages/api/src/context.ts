@@ -1,5 +1,5 @@
-import type { Session } from "@wab/auth";
-import type { Database } from "@wab/db";
+import type { Session } from "@wacheap/auth";
+import type { Database } from "@wacheap/db";
 
 export type Context = {
   session: Session | null;

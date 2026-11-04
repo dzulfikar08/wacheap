@@ -1,12 +1,12 @@
 // Cloudflare D1 binds at most 100 parameters per statement (local SQLite allows 32766, so only a test on
-// @wab/db/test-d1 notices). Anything whose size comes from the caller goes through these helpers:
+// @wacheap/db/test-d1 notices). Anything whose size comes from the caller goes through these helpers:
 //   - a multi-row insert: `insertChunked` (one statement per slice of rows, one atomic db.batch),
 //   - `IN (...)` / `VALUES (...)` over caller-sized lists: `readChunked` (one query per slice).
 import { getTableColumns, getTableName } from "drizzle-orm";
 import type { BatchItem } from "drizzle-orm/batch";
 import type { SQLiteInsertBase, SQLiteTable } from "drizzle-orm/sqlite-core";
 
-import type { Database } from "@wab/db";
+import type { Database } from "@wacheap/db";
 
 /** D1's cap on bound parameters in one statement. */
 export const D1_MAX_PARAMS = 100;

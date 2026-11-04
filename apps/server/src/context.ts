@@ -1,4 +1,4 @@
-import type { Context as ApiContext } from "@wab/api/context";
+import type { Context as ApiContext } from "@wacheap/api/context";
 import type { Context as HonoContext } from "hono";
 
 import { getDb } from "./services";

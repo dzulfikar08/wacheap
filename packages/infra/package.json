@@ -1,5 +1,5 @@
 {
-  "name": "@wab/infra",
+  "name": "@wacheap/infra",
   "private": true,
   "type": "module",
   "scripts": {
@@ -15,7 +15,7 @@
     "@alchemy.run/cloudflare": "2.0.0-beta.84",
     "@effect/platform-bun": "4.0.6",
     "@effect/platform-node": "4.0.6",
-    "@wab/config": "workspace:*",
+    "@wacheap/config": "workspace:*",
     "alchemy": "2.0.0-beta.84",
     "effect": "4.0.6",
     "typescript": "catalog:",

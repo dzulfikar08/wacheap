@@ -10,7 +10,7 @@
       "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
         "@types/node": "catalog:",
-        "@wab/config": "workspace:*",
+        "@wacheap/config": "workspace:*",
         "oxfmt": "^0.66.0",
         "oxlint": "^1.81.0",
         "tsrs": "0.18.0-ts7.1.0-dev.20260929",
@@ -25,9 +25,9 @@
         "@orpc/openapi": "catalog:",
         "@orpc/server": "catalog:",
         "@orpc/zod": "catalog:",
-        "@wab/api": "workspace:*",
-        "@wab/auth": "workspace:*",
-        "@wab/db": "workspace:*",
+        "@wacheap/api": "workspace:*",
+        "@wacheap/auth": "workspace:*",
+        "@wacheap/db": "workspace:*",
         "better-auth": "catalog:",
         "hono": "^4.13.7",
         "varlock": "catalog:",
@@ -36,8 +36,8 @@
       "devDependencies": {
         "@cloudflare/workers-types": "catalog:",
         "@types/node": "catalog:",
-        "@wab/config": "workspace:*",
-        "@wab/infra": "workspace:*",
+        "@wacheap/config": "workspace:*",
+        "@wacheap/infra": "workspace:*",
         "tsdown": "^0.23.0",
         "typescript": "catalog:",
       },
@@ -53,8 +53,8 @@
         "@tanstack/react-form": "catalog:",
         "@tanstack/react-query": "catalog:",
         "@tanstack/react-router": "^1.170.44",
-        "@wab/api": "workspace:*",
-        "@wab/ui": "workspace:*",
+        "@wacheap/api": "workspace:*",
+        "@wacheap/ui": "workspace:*",
         "better-auth": "catalog:",
         "lucide-react": "catalog:",
         "next-themes": "catalog:",
@@ -72,7 +72,7 @@
         "@types/react": "^19.3.0",
         "@types/react-dom": "catalog:",
         "@vitejs/plugin-react": "^6.1.2",
-        "@wab/config": "workspace:*",
+        "@wacheap/config": "workspace:*",
         "postcss": "^8.5.30",
         "tailwindcss": "catalog:",
         "typescript": "catalog:",
@@ -80,42 +80,42 @@
       },
     },
     "packages/api": {
-      "name": "@wab/api",
+      "name": "@wacheap/api",
       "dependencies": {
         "@orpc/client": "catalog:",
         "@orpc/openapi": "catalog:",
         "@orpc/server": "catalog:",
         "@orpc/zod": "catalog:",
-        "@wab/auth": "workspace:*",
-        "@wab/db": "workspace:*",
+        "@wacheap/auth": "workspace:*",
+        "@wacheap/db": "workspace:*",
         "drizzle-orm": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
         "@types/bun": "^1.4.2",
-        "@wab/config": "workspace:*",
+        "@wacheap/config": "workspace:*",
         "typescript": "catalog:",
       },
     },
     "packages/auth": {
-      "name": "@wab/auth",
+      "name": "@wacheap/auth",
       "dependencies": {
-        "@wab/db": "workspace:*",
+        "@wacheap/db": "workspace:*",
         "better-auth": "catalog:",
         "zod": "catalog:",
       },
       "devDependencies": {
         "@types/bun": "^1.4.2",
-        "@wab/config": "workspace:*",
+        "@wacheap/config": "workspace:*",
         "typescript": "catalog:",
       },
     },
     "packages/config": {
-      "name": "@wab/config",
+      "name": "@wacheap/config",
       "version": "0.0.0",
     },
     "packages/db": {
-      "name": "@wab/db",
+      "name": "@wacheap/db",
       "dependencies": {
         "@libsql/client": "0.18.0",
         "drizzle-orm": "catalog:",
@@ -124,14 +124,14 @@
       },
       "devDependencies": {
         "@types/bun": "^1.4.2",
-        "@wab/config": "workspace:*",
+        "@wacheap/config": "workspace:*",
         "drizzle-kit": "^0.31.10",
         "typescript": "catalog:",
         "varlock": "catalog:",
       },
     },
     "packages/infra": {
-      "name": "@wab/infra",
+      "name": "@wacheap/infra",
       "dependencies": {
         "zod": "catalog:",
       },
@@ -139,7 +139,7 @@
         "@alchemy.run/cloudflare": "2.0.0-beta.84",
         "@effect/platform-bun": "4.0.6",
         "@effect/platform-node": "4.0.6",
-        "@wab/config": "workspace:*",
+        "@wacheap/config": "workspace:*",
         "alchemy": "2.0.0-beta.84",
         "effect": "4.0.6",
         "typescript": "catalog:",
@@ -147,7 +147,7 @@
       },
     },
     "packages/ui": {
-      "name": "@wab/ui",
+      "name": "@wacheap/ui",
       "version": "0.0.0",
       "dependencies": {
         "@base-ui/react": "^1.8.0",
@@ -166,7 +166,7 @@
         "@tailwindcss/postcss": "^4.3.3",
         "@types/react": "^19.2.18",
         "@types/react-dom": "catalog:",
-        "@wab/config": "workspace:*",
+        "@wacheap/config": "workspace:*",
         "tailwindcss": "catalog:",
         "typescript": "catalog:",
       },
@@ -822,17 +822,17 @@
 
     "@vitejs/plugin-react": ["@vitejs/plugin-react@6.2.1", "", { "dependencies": { "@rolldown/pluginutils": "^1.0.1" }, "peerDependencies": { "@rolldown/plugin-babel": "^0.1.7 || ^0.2.0 || ^0.3.0", "babel-plugin-react-compiler": "^1.0.0", "oxc-transform-react": ">=0.152.0 <0.157.0", "vite": "^8.0.0" }, "optionalPeers": ["@rolldown/plugin-babel", "babel-plugin-react-compiler", "oxc-transform-react"] }, "sha512-9KyWCij3r0+qLG3Q62vBmv0VyevmYibAtxaCIVK9o0k6CXgaajZRIe8tpfchQcdZArJ5b/7OrIz4W3b2uxVRDA=="],
 
-    "@wab/api": ["@wab/api@workspace:packages/api"],
+    "@wacheap/api": ["@wacheap/api@workspace:packages/api"],
 
-    "@wab/auth": ["@wab/auth@workspace:packages/auth"],
+    "@wacheap/auth": ["@wacheap/auth@workspace:packages/auth"],
 
-    "@wab/config": ["@wab/config@workspace:packages/config"],
+    "@wacheap/config": ["@wacheap/config@workspace:packages/config"],
 
-    "@wab/db": ["@wab/db@workspace:packages/db"],
+    "@wacheap/db": ["@wacheap/db@workspace:packages/db"],
 
-    "@wab/infra": ["@wab/infra@workspace:packages/infra"],
+    "@wacheap/infra": ["@wacheap/infra@workspace:packages/infra"],
 
-    "@wab/ui": ["@wab/ui@workspace:packages/ui"],
+    "@wacheap/ui": ["@wacheap/ui@workspace:packages/ui"],
 
     "@yuku-toolchain/darwin-arm64": ["@yuku-toolchain/darwin-arm64@0.25.0", "", { "os": "darwin", "cpu": "arm64" }, "sha512-21QMCgP74cgSrgxIgw/SS5uMnn7cFHwgjNEBZYgO1HxpdjG4ULenXyUY92xRReuAJZdbRyz6OGwtYi6lDKumSw=="],
 

@@ -2,7 +2,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { HeadContent, Outlet, createRootRouteWithContext } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { Toaster } from "@wab/ui/components/sonner";
+import { Toaster } from "@wacheap/ui/components/sonner";
 
 import Header from "@/components/header";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -20,11 +20,11 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   head: () => ({
     meta: [
       {
-        title: "wab",
+        title: "WACheap",
       },
       {
         name: "description",
-        content: "wab is a web application",
+        content: "Official WhatsApp broadcast for online sellers. Pay Meta's rate, 0% markup.",
       },
     ],
     links: [

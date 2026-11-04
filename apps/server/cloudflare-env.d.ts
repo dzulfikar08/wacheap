@@ -1,4 +1,4 @@
-import type { ServerEnv } from "@wab/infra/alchemy.run";
+import type { ServerEnv } from "@wacheap/infra/alchemy.run";
 
 // This file infers types for the cloudflare:workers environment from your Alchemy Worker.
 // @see https://alchemy.run/cloudflare/compute/workers

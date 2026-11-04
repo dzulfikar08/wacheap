@@ -1,4 +1,4 @@
 {
-  "extends": "@wab/config/tsconfig.base.json",
+  "extends": "@wacheap/config/tsconfig.base.json",
   "include": ["alchemy.run.ts"]
 }

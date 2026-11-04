@@ -6,7 +6,7 @@ export default defineConfig({
   outDir: "./dist",
   clean: true,
   deps: {
-    alwaysBundle: [/@wab\/.*/],
+    alwaysBundle: [/@wacheap\/.*/],
     neverBundle: ["cloudflare:workers"],
   },
 });

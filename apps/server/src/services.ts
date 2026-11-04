@@ -1,5 +1,5 @@
-import { createAuth as createConfiguredAuth } from "@wab/auth";
-import { type Database, createDb } from "@wab/db";
+import { createAuth as createConfiguredAuth } from "@wacheap/auth";
+import { type Database, createDb } from "@wacheap/db";
 
 import { ENV } from "./env.server";
 

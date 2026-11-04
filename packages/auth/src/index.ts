@@ -1,5 +1,5 @@
-import type { Database } from "@wab/db";
-import * as schema from "@wab/db/schema/auth";
+import type { Database } from "@wacheap/db";
+import * as schema from "@wacheap/db/schema/auth";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 

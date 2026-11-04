@@ -1,5 +1,5 @@
 {
-  "extends": "@wab/config/tsconfig.base.json",
+  "extends": "@wacheap/config/tsconfig.base.json",
   "compilerOptions": {
     "types": ["node", "@cloudflare/workers-types", "bun"],
     "composite": true,

@@ -1,5 +1,5 @@
 {
-  "name": "wab",
+  "name": "wacheap",
   "private": true,
   "license": "AGPL-3.0-only",
   "workspaces": {
@@ -39,9 +39,9 @@
     "dev:types": "tsrs -b packages/api --watch",
     "dev:web": "turbo run dev:bare -F web --",
     "dev:server": "turbo run dev:bare -F hono --",
-    "db:generate": "turbo run db:generate -F @wab/db --",
-    "deploy": "turbo run deploy -F @wab/infra --",
-    "destroy": "turbo run destroy -F @wab/infra --",
+    "db:generate": "turbo run db:generate -F @wacheap/db --",
+    "deploy": "turbo run deploy -F @wacheap/infra --",
+    "destroy": "turbo run destroy -F @wacheap/infra --",
     "env:generate": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/",
     "check": "oxlint && oxfmt --write"
   },
@@ -51,7 +51,7 @@
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
     "@types/node": "catalog:",
-    "@wab/config": "workspace:*",
+    "@wacheap/config": "workspace:*",
     "oxfmt": "^0.66.0",
     "oxlint": "^1.81.0",
     "tsrs": "0.18.0-ts7.1.0-dev.20260929",

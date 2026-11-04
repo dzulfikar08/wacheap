@@ -27,7 +27,7 @@ export const server = Cloudflare.Worker("server", {
 export type ServerEnv = Cloudflare.InferEnv<typeof server>;
 
 export default Alchemy.Stack(
-  "wab",
+  "wacheap",
   {
     providers: Cloudflare.providers(),
     state: Cloudflare.state(),

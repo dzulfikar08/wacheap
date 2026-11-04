@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Button } from "@wab/ui/components/button";
+import { Button } from "@wacheap/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,8 +8,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@wab/ui/components/dropdown-menu";
-import { Skeleton } from "@wab/ui/components/skeleton";
+} from "@wacheap/ui/components/dropdown-menu";
+import { Skeleton } from "@wacheap/ui/components/skeleton";
 
 import { authClient } from "@/lib/auth-client";
 

@@ -12,11 +12,11 @@
   },
   "iconLibrary": "lucide",
   "aliases": {
-    "components": "@wab/ui/components",
-    "utils": "@wab/ui/lib/utils",
-    "hooks": "@wab/ui/hooks",
-    "lib": "@wab/ui/lib",
-    "ui": "@wab/ui/components"
+    "components": "@wacheap/ui/components",
+    "utils": "@wacheap/ui/lib/utils",
+    "hooks": "@wacheap/ui/hooks",
+    "lib": "@wacheap/ui/lib",
+    "ui": "@wacheap/ui/components"
   },
   "menuColor": "default",
   "menuAccent": "subtle",

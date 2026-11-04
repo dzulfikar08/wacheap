@@ -1,5 +1,5 @@
 {
-  "name": "@wab/auth",
+  "name": "@wacheap/auth",
   "type": "module",
   "exports": {
     ".": {
@@ -17,13 +17,13 @@
     "test": "bun test src"
   },
   "dependencies": {
-    "@wab/db": "workspace:*",
+    "@wacheap/db": "workspace:*",
     "better-auth": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2",
-    "@wab/config": "workspace:*",
+    "@wacheap/config": "workspace:*",
     "typescript": "catalog:"
   }
 }

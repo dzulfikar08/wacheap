@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import { user } from "@wab/db/schema/auth";
-import { d1TestDb } from "@wab/db/test-d1";
+import { user } from "@wacheap/db/schema/auth";
+import { d1TestDb } from "@wacheap/db/test-d1";
 
 import { chunk, D1_MAX_PARAMS, insertChunked, readChunked, rowsPerStatement } from "./d1";
 

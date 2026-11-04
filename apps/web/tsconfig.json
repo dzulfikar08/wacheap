@@ -12,7 +12,7 @@
     "rootDirs": ["."],
     "paths": {
       "@/*": ["./src/*"],
-      "@wab/ui/*": ["../../packages/ui/src/*"]
+      "@wacheap/ui/*": ["../../packages/ui/src/*"]
     }
   }
 }

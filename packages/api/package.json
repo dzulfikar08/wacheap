@@ -1,5 +1,5 @@
 {
-  "name": "@wab/api",
+  "name": "@wacheap/api",
   "type": "module",
   "exports": {
     ".": {
@@ -22,14 +22,14 @@
     "@orpc/openapi": "catalog:",
     "@orpc/server": "catalog:",
     "@orpc/zod": "catalog:",
-    "@wab/auth": "workspace:*",
-    "@wab/db": "workspace:*",
+    "@wacheap/auth": "workspace:*",
+    "@wacheap/db": "workspace:*",
     "drizzle-orm": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2",
-    "@wab/config": "workspace:*",
+    "@wacheap/config": "workspace:*",
     "typescript": "catalog:"
   }
 }

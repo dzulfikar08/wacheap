@@ -1,4 +1,4 @@
-import { cn } from "@wab/ui/lib/utils";
+import { cn } from "@wacheap/ui/lib/utils";
 import * as React from "react";
 
 function Card({

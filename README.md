@@ -1,11 +1,13 @@
-# WAB (codename)
+# WACheap
 
-Official WhatsApp broadcast and shared inbox for Indonesian small businesses. It uses Meta's WhatsApp Cloud API with
+Official WhatsApp broadcast and shared inbox for Indonesian online sellers (marketplace, Instagram and TikTok shops). It uses Meta's WhatsApp Cloud API with
 your own number, you pay Meta's rate with no markup, and every agent is included.
 
 - **Official API only**: no unofficial gateways, so your number isn't at risk of a ban for using one.
 - **0% markup**: Meta bills message fees to your own WhatsApp Business Account. Before every send, the app shows the
   exact rupiah cost.
+- **Order and resi updates as utility messages** (Rp357 instead of Rp586 for marketing), with buyers imported from
+  Shopee, Tokopedia and TikTok Shop order exports.
 - **Open source** ([AGPL-3.0](LICENSE)): self-host it for free, or use the hosted cloud at a flat fee per number.
 
 Status: early scaffold. The v1 scope covers contacts and CSV/XLSX import, templates, scheduled broadcasts with cost
@@ -65,7 +67,7 @@ npx shadcn@latest add accordion dialog popover sheet table -c packages/ui
 Import shared components like this:
 
 ```tsx
-import { Button } from "@wab/ui/components/button";
+import { Button } from "@wacheap/ui/components/button";
 ```
 
 ### Add app-specific blocks
@@ -113,7 +115,7 @@ cd packages/infra && bunx alchemy deploy --stage production
 ## Project Structure
 
 ```
-wab/
+wacheap/
 ├── apps/
 │   ├── web/         # Frontend application (React + TanStack Router)
 │   └── server/      # Backend API (Hono, ORPC)

@@ -13,9 +13,9 @@
     "@orpc/openapi": "catalog:",
     "@orpc/server": "catalog:",
     "@orpc/zod": "catalog:",
-    "@wab/api": "workspace:*",
-    "@wab/auth": "workspace:*",
-    "@wab/db": "workspace:*",
+    "@wacheap/api": "workspace:*",
+    "@wacheap/auth": "workspace:*",
+    "@wacheap/db": "workspace:*",
     "better-auth": "catalog:",
     "hono": "^4.13.7",
     "varlock": "catalog:",
@@ -24,8 +24,8 @@
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
     "@types/node": "catalog:",
-    "@wab/config": "workspace:*",
-    "@wab/infra": "workspace:*",
+    "@wacheap/config": "workspace:*",
+    "@wacheap/infra": "workspace:*",
     "tsdown": "^0.23.0",
     "typescript": "catalog:"
   }

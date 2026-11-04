@@ -1,10 +1,10 @@
-import { Button } from "@wab/ui/components/button";
+import { Button } from "@wacheap/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@wab/ui/components/dropdown-menu";
+} from "@wacheap/ui/components/dropdown-menu";
 import { Moon, Sun } from "lucide-react";
 
 import { useTheme } from "@/components/theme-provider";
