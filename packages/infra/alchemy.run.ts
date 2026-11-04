@@ -16,7 +16,13 @@ export const db = Cloudflare.D1.Database("database", {
 export const broadcastQueue = Cloudflare.Queues.Queue("broadcast");
 export const broadcastDeadLetters = Cloudflare.Queues.Queue("broadcast-dlq");
 
+// Production gets fixed script names, so its URLs are known before the first deploy (CORS_ORIGIN must name the web
+// origin): https://wacheap.dzulfikar-at.workers.dev and https://wacheap-api.dzulfikar-at.workers.dev. Every other
+// stage keeps Alchemy's generated names so personal stages never collide with production.
+const production = process.env.ALCHEMY_STAGE === "production";
+
 export const server = Cloudflare.Worker("server", {
+  name: production ? "wacheap-api" : undefined,
   main: "../../apps/server/src/index.ts",
   compatibility: {
     // Pinned so an Alchemy upgrade doesn't silently change runtime behaviour. nodejs_compat is on by default from
@@ -56,6 +62,7 @@ export default Alchemy.Stack(
       settings: { batchSize: 50, maxRetries: 5, maxWaitTimeMs: 2000, retryDelay: 30 },
     });
     const webWorker = yield* Cloudflare.Website.Vite("web", {
+      name: production ? "wacheap" : undefined,
       rootDir: "../../apps/web",
       assets: {
         htmlHandling: "auto-trailing-slash",
