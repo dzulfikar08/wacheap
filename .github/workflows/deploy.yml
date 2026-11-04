@@ -8,6 +8,12 @@
 #            state-store token there), and Workers Routes/Zone edit once a custom domain is added.
 #   vars:    CLOUDFLARE_ACCOUNT_ID, CORS_ORIGIN (the web origin; it must be a URL, so before the first deploy use the
 #            planned domain or a placeholder, then set the real origin and rerun)
+# WACheap Cloud billing (DOKU Checkout). WACHEAP_CLOUD needs nothing here: alchemy.run.ts sets it to "true" for the
+# production stage (other stages read it from their env, default off). All three DOKU values are optional: without
+# the two keys the deploy still succeeds and checkout answers "pembayaran belum disiapkan".
+#   secrets: DOKU_CLIENT_ID (DOKU dashboard Client ID, "BRN-..."), DOKU_SECRET_KEY (DOKU Secret Key; also verifies the
+#            payment webhook at https://wacheap-api.dzulfikar-at.workers.dev/api/billing/webhook)
+#   vars:    DOKU_BASE_URL (empty = https://api.doku.com; https://api-sandbox.doku.com with sandbox keys)
 name: Deploy
 
 on:
@@ -54,4 +60,7 @@ jobs:
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
           CORS_ORIGIN: ${{ vars.CORS_ORIGIN }}
+          DOKU_CLIENT_ID: ${{ secrets.DOKU_CLIENT_ID }}
+          DOKU_SECRET_KEY: ${{ secrets.DOKU_SECRET_KEY }}
+          DOKU_BASE_URL: ${{ vars.DOKU_BASE_URL }}
         run: env -u npm_execpath node ./node_modules/alchemy/bin/cli.js deploy --stage production --yes --no-input
