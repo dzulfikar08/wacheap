@@ -79,6 +79,19 @@ export function renewalBase(state: BillingState): Date {
     : state.trialEndsAt;
 }
 
+/**
+ * Where a paid order's time starts when it changes the number count. Paid time still running was bought for
+ * `state.numbers`; it is rescaled to the new count (10 days for 1 number become 1 day for 10), so a payment can never
+ * stretch or shrink time already paid for. Trial days aren't bought per number and stay as they are. With the same
+ * count, or nothing paid left, this is renewalBase.
+ */
+export function rescaledBase(state: BillingState, now: Date, numbers: number): Date {
+  const paidLeft = state.paidUntil ? state.paidUntil.getTime() - now.getTime() : 0;
+  if (paidLeft <= 0 || numbers === state.numbers) return renewalBase(state);
+  const paid = new Date(now.getTime() + Math.floor((paidLeft * state.numbers) / numbers));
+  return paid.getTime() > state.trialEndsAt.getTime() ? paid : state.trialEndsAt;
+}
+
 function daysUntil(end: Date, now: Date): number {
   return Math.max(0, Math.ceil((end.getTime() - now.getTime()) / DAY_MS));
 }

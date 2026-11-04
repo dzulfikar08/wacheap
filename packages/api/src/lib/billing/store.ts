@@ -2,7 +2,7 @@
 // statement guarded so a replayed or concurrent notification extends paid_until exactly once.
 import type { Database } from "@wacheap/db";
 import { billingAccount, billingOrder } from "@wacheap/db/schema/billing";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, lt, ne, or, sql } from "drizzle-orm";
 
 import {
   type DokuConfig,
@@ -15,7 +15,7 @@ import {
   parseNotification,
   verifySignature,
 } from "./doku";
-import { type BillingState, extendPaidUntil, renewalBase, trialEndsAt } from "./plan";
+import { type BillingState, extendPaidUntil, rescaledBase, trialEndsAt } from "./plan";
 
 /** The user's billing row, created with a fresh trial on first use. */
 export async function ensureBillingAccount(
@@ -55,7 +55,8 @@ export async function activateOrder(
 ): Promise<{ result: ActivateResult; paidUntil?: Date }> {
   const state = await ensureBillingAccount(db, order.userId, now);
   const previous = state.paidUntil?.getTime() ?? null;
-  const until = extendPaidUntil(renewalBase(state), now, order.plan);
+  // A count change rescales paid time still running before the new period stacks on it (see rescaledBase).
+  const until = extendPaidUntil(rescaledBase(state, now, order.numbers), now, order.plan);
 
   const [flipped] = await db.batch([
     db
@@ -173,12 +174,17 @@ export async function applyNotification(
   return { status: 409, body: { error: "concurrent update, retry" } };
 }
 
-/** A pending order older than this is asked about at DOKU when its owner polls it (the webhook may have been lost). */
+/** An unsettled order older than this is asked about at DOKU when its owner polls it (the webhook may have been lost). */
 export const RECONCILE_AFTER_MS = 30_000;
+/** At most one status call per order in this window, whatever the polling rate or the number of Worker isolates. */
+export const RECONCILE_EVERY_MS = 15_000;
+/** DOKU's payment window (payment_due_date, 60 min) plus grace; after it the order can't be paid and is expired here. */
+export const RECONCILE_UNTIL_MS = 75 * 60_000;
 
 /**
- * Ask DOKU about a still-pending order and settle it the same way a webhook would. A failed lookup changes nothing;
- * the next poll, or DOKU's own retry of the webhook, tries again.
+ * Ask DOKU about an unsettled order and settle it the same way a webhook would. The call is claimed first (one per
+ * order per RECONCILE_EVERY_MS, atomically), so polling can't fan out into unbounded DOKU traffic. A failed lookup
+ * changes nothing; the next poll after the window, or DOKU's own webhook retry, tries again.
  */
 export async function reconcileOrder(
   db: Database,
@@ -187,9 +193,27 @@ export async function reconcileOrder(
   now: Date,
   fetchImpl: typeof fetch = fetch,
 ): Promise<boolean> {
+  const claimed = await db
+    .update(billingOrder)
+    .set({ statusCheckedAt: now })
+    .where(
+      and(
+        eq(billingOrder.provider, "doku"),
+        eq(billingOrder.providerRef, ref),
+        ne(billingOrder.status, "paid"),
+        or(
+          isNull(billingOrder.statusCheckedAt),
+          lt(billingOrder.statusCheckedAt, new Date(now.getTime() - RECONCILE_EVERY_MS)),
+        ),
+      ),
+    )
+    .returning({ id: billingOrder.id });
+  if (claimed.length === 0) return false;
   try {
     const n = await checkStatus(doku, ref, fetchImpl);
     const res = await applyNotification(db, n, now);
+    if (res.status !== 200)
+      console.warn(`billing: status check for ${ref} answered ${res.status}`, res.body);
     return res.status === 200;
   } catch (error) {
     console.warn(
@@ -197,4 +221,12 @@ export async function reconcileOrder(
     );
     return false;
   }
+}
+
+/** Past DOKU's payment window an unpaid order can't be paid any more: mark it expired instead of asking again. */
+export async function expireStaleOrder(db: Database, ref: string): Promise<void> {
+  await db
+    .update(billingOrder)
+    .set({ status: "expired" })
+    .where(and(eq(billingOrder.providerRef, ref), eq(billingOrder.status, "pending")));
 }

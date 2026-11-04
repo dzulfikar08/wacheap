@@ -56,6 +56,8 @@ export const billingOrder = sqliteTable(
       .default(sql`(cast(unixepoch('subsecond') * 1000 as integer))`)
       .notNull(),
     paidAt: integer("paid_at", { mode: "timestamp_ms" }),
+    /** Last time the server asked DOKU's status API about this order; claimed atomically to bound outbound calls. */
+    statusCheckedAt: integer("status_checked_at", { mode: "timestamp_ms" }),
   },
   (table) => [
     uniqueIndex("billing_order_provider_ref_uidx").on(table.provider, table.providerRef),

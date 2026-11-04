@@ -70,7 +70,9 @@ function BillingPage() {
     );
   }
 
-  const qty = numbers ?? data.numbers;
+  // While paid time runs a renewal keeps the count (the server refuses a change), so the stepper is locked.
+  const locked = data.status === "active";
+  const qty = locked ? data.numbers : (numbers ?? data.numbers);
   const pay = (plan: "monthly" | "yearly") => checkout.mutate({ plan, numbers: qty });
 
   return (
@@ -119,7 +121,11 @@ function BillingPage() {
       <Card>
         <CardHeader>
           <CardTitle>Jumlah nomor WhatsApp</CardTitle>
-          <CardDescription>Harga dihitung per nomor yang tersambung.</CardDescription>
+          <CardDescription>
+            {locked
+              ? "Masa aktifmu berjalan untuk jumlah ini. Jumlah nomor bisa diubah setelah masa aktif habis."
+              : "Harga dihitung per nomor yang tersambung."}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2">
@@ -127,7 +133,7 @@ function BillingPage() {
               variant="outline"
               size="icon"
               aria-label="Kurangi nomor"
-              disabled={qty <= 1}
+              disabled={locked || qty <= 1}
               onClick={() => setNumbers(Math.max(1, qty - 1))}
             >
               <Minus />
@@ -142,7 +148,7 @@ function BillingPage() {
               variant="outline"
               size="icon"
               aria-label="Tambah nomor"
-              disabled={qty >= MAX_NUMBERS}
+              disabled={locked || qty >= MAX_NUMBERS}
               onClick={() => setNumbers(Math.min(MAX_NUMBERS, qty + 1))}
             >
               <Plus />

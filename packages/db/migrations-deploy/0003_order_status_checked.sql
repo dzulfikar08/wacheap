@@ -1,0 +1,1 @@
+ALTER TABLE `billing_order` ADD `status_checked_at` integer;

@@ -14,8 +14,9 @@ import { z } from "zod";
 import { rupiah, tanggal } from "@/lib/billing-format";
 import { orpc, queryClient } from "@/utils/orpc";
 
-// DOKU sends the buyer back here (callback_url) with ?order=<ref>. The webhook is what credits the time; this page
-// only waits for it.
+// DOKU sends the buyer back here (callback_url) with ?order=<ref>. The webhook normally credits the time; while the
+// order is unsettled, each poll also lets the server ask DOKU's status API (bounded server-side), so a lost webhook
+// still settles.
 export const Route = createFileRoute("/_auth/billing/selesai")({
   component: ReturnPage,
   validateSearch: z.object({ order: z.string().max(64).optional() }),

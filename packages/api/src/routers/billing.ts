@@ -12,7 +12,13 @@ import {
   orderAmount,
   type BillingPlan,
 } from "../lib/billing/plan";
-import { RECONCILE_AFTER_MS, ensureBillingAccount, reconcileOrder } from "../lib/billing/store";
+import {
+  RECONCILE_AFTER_MS,
+  RECONCILE_UNTIL_MS,
+  ensureBillingAccount,
+  expireStaleOrder,
+  reconcileOrder,
+} from "../lib/billing/store";
 import { CLOUD_PLAN } from "../lib/pricing";
 
 export const checkoutInput = z.object({
@@ -134,22 +140,21 @@ export const billingRouter = {
       if (!order) throw new ORPCError("NOT_FOUND", { message: "Pesanan tidak ditemukan." });
       // The webhook may have been lost: ask DOKU about a pending order once it's old enough, and settle it here.
       const now = new Date();
-      if (
-        order.status === "pending" &&
-        context.billing.doku &&
-        now.getTime() - order.createdAt.getTime() > RECONCILE_AFTER_MS
-      ) {
-        if (
+      const age = now.getTime() - order.createdAt.getTime();
+      if (order.status !== "paid" && order.status !== "expired" && context.billing.doku) {
+        if (age > RECONCILE_UNTIL_MS) {
+          if (order.status === "pending") await expireStaleOrder(context.db, input.ref);
+        } else if (age > RECONCILE_AFTER_MS) {
+          // A failed order is asked about too: the buyer may still have paid on the same DOKU link.
           await reconcileOrder(
             context.db,
             context.billing.doku,
             input.ref,
             now,
             context.billing.fetch,
-          )
-        ) {
-          order = (await read()) ?? order;
+          );
         }
+        order = (await read()) ?? order;
       }
       const { createdAt: _createdAt, ...rest } = order;
       return rest;

@@ -211,3 +211,28 @@ describe("isDokuPaymentUrl", () => {
     }
   });
 });
+
+describe("createCheckout refuses a payment URL outside doku.com", () => {
+  test("throws instead of returning it", async () => {
+    const { createCheckout } = await import("./doku");
+    const evil = (async () =>
+      Response.json({
+        response: { payment: { url: "https://evil.example/pay" } },
+      })) as unknown as typeof fetch;
+    await expect(
+      createCheckout(
+        { clientId: "BRN-1", secretKey: "s", baseUrl: "https://api-sandbox.doku.com" },
+        {
+          orderId: "WAC-1",
+          amountIdr: 99_000,
+          itemName: "x",
+          quantity: 1,
+          customerEmail: "a@b.test",
+          notifyUrl: "https://n.test",
+          returnUrl: "https://r.test",
+        },
+        evil,
+      ),
+    ).rejects.toThrow(/outside doku.com/);
+  });
+});

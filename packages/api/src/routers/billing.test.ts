@@ -349,14 +349,61 @@ describe("billing fixes from review", () => {
     await call(billingRouter.status, undefined, { context: as("u1") });
     const { order } = await call(
       billingRouter.checkout,
-      { plan: "monthly", numbers: 1 },
+      { plan: "monthly", numbers: 3 },
       { context: as("u1") },
     );
-    expect((await notify(db, { ref: order, amount: CLOUD_PLAN.monthly })).status).toBe(200);
+    expect((await notify(db, { ref: order, amount: CLOUD_PLAN.monthly * 3 })).status).toBe(200);
+    expect((await account(db, "u1"))?.numbers).toBe(3);
     await expect(
       call(billingRouter.checkout, { plan: "monthly", numbers: 10 }, { context: as("u1") }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
-    await call(billingRouter.checkout, { plan: "yearly", numbers: 1 }, { context: as("u1") });
+    await call(billingRouter.checkout, { plan: "yearly", numbers: 3 }, { context: as("u1") });
+  });
+
+  test("an expired account can choose a new count", async () => {
+    const { db, as } = await setup();
+    await call(billingRouter.status, undefined, { context: as("u1") });
+    await db
+      .update(billingAccount)
+      .set({
+        trialEndsAt: new Date(Date.now() - 86_400_000),
+        paidUntil: new Date(Date.now() - 3_600_000),
+        numbers: 2,
+      })
+      .where(eq(billingAccount.userId, "u1"));
+    await call(billingRouter.checkout, { plan: "monthly", numbers: 7 }, { context: as("u1") });
+  });
+
+  test("two checkouts with different counts can't stretch paid time: it is rescaled on activation", async () => {
+    const { db, as } = await setup();
+    await call(billingRouter.status, undefined, { context: as("u1") });
+    // No paid time yet, trial over: both checkouts are allowed.
+    await db
+      .update(billingAccount)
+      .set({ trialEndsAt: new Date(Date.now() - 1000) })
+      .where(eq(billingAccount.userId, "u1"));
+    const one = await call(
+      billingRouter.checkout,
+      { plan: "monthly", numbers: 1 },
+      { context: as("u1") },
+    );
+    const ten = await call(
+      billingRouter.checkout,
+      { plan: "monthly", numbers: 10 },
+      { context: as("u1") },
+    );
+    const t0 = new Date();
+    await notify(db, { ref: one.order, amount: CLOUD_PLAN.monthly }, undefined, t0);
+    const afterOne = (await account(db, "u1"))!.paidUntil!.getTime();
+    const monthMs = afterOne - t0.getTime();
+    await notify(db, { ref: ten.order, amount: CLOUD_PLAN.monthly * 10 }, undefined, t0);
+    const acc = (await account(db, "u1"))!;
+    expect(acc.numbers).toBe(10);
+    // The 1-number month becomes a tenth of a month for 10 numbers, then the paid 10-number month stacks on it:
+    // about 1.1 months, not 2 months for 10 numbers.
+    const total = acc.paidUntil!.getTime() - t0.getTime();
+    expect(total).toBeLessThan(monthMs * 1.2);
+    expect(total).toBeGreaterThan(monthMs * 1.05);
   });
 
   test("a paid order whose webhook never came is settled from DOKU's status API when polled", async () => {
@@ -431,5 +478,75 @@ describe("billing fixes from review", () => {
     expect((await notify(db, { ref: order, amount: CLOUD_PLAN.monthly })).body).toMatchObject({
       activated: false,
     });
+  });
+});
+
+describe("status-API reconcile is bounded", () => {
+  test("at most one DOKU call per order per window, however fast the page polls", async () => {
+    const { db, as } = await setup();
+    await call(billingRouter.status, undefined, { context: as("u1") });
+    const { order } = await call(
+      billingRouter.checkout,
+      { plan: "monthly", numbers: 1 },
+      { context: as("u1") },
+    );
+    await db
+      .update(billingOrder)
+      .set({ createdAt: new Date(Date.now() - 60_000) })
+      .where(eq(billingOrder.providerRef, order));
+    let calls = 0;
+    const pending = (async () => {
+      calls++;
+      return Response.json({
+        order: { invoice_number: order, amount: CLOUD_PLAN.monthly },
+        transaction: { status: "PENDING" },
+      });
+    }) as unknown as typeof fetch;
+    const ctx = { ...as("u1"), billing: { ...as("u1").billing, fetch: pending } };
+    for (let i = 0; i < 5; i++) await call(billingRouter.order, { ref: order }, { context: ctx });
+    expect(calls).toBe(1);
+  });
+
+  test("past DOKU's payment window a pending order is expired locally, without a call", async () => {
+    const { db, as } = await setup();
+    await call(billingRouter.status, undefined, { context: as("u1") });
+    const { order } = await call(
+      billingRouter.checkout,
+      { plan: "monthly", numbers: 1 },
+      { context: as("u1") },
+    );
+    await db
+      .update(billingOrder)
+      .set({ createdAt: new Date(Date.now() - 2 * 3_600_000) })
+      .where(eq(billingOrder.providerRef, order));
+    let calls = 0;
+    const spy = (async () => (calls++, Response.json({}))) as unknown as typeof fetch;
+    const ctx = { ...as("u1"), billing: { ...as("u1").billing, fetch: spy } };
+    const res = await call(billingRouter.order, { ref: order }, { context: ctx });
+    expect(res.status).toBe("expired");
+    expect(calls).toBe(0);
+    expect("createdAt" in res).toBe(false);
+  });
+
+  test("a failed order that was paid on the same link after all is settled by reconcile", async () => {
+    const { db, as } = await setup();
+    await call(billingRouter.status, undefined, { context: as("u1") });
+    const { order } = await call(
+      billingRouter.checkout,
+      { plan: "monthly", numbers: 1 },
+      { context: as("u1") },
+    );
+    await notify(db, { ref: order, amount: CLOUD_PLAN.monthly, status: "FAILED" });
+    await db
+      .update(billingOrder)
+      .set({ createdAt: new Date(Date.now() - 60_000) })
+      .where(eq(billingOrder.providerRef, order));
+    const paid = (async () =>
+      Response.json({
+        order: { invoice_number: order, amount: CLOUD_PLAN.monthly },
+        transaction: { status: "SUCCESS" },
+      })) as unknown as typeof fetch;
+    const ctx = { ...as("u1"), billing: { ...as("u1").billing, fetch: paid } };
+    expect((await call(billingRouter.order, { ref: order }, { context: ctx })).status).toBe("paid");
   });
 });
