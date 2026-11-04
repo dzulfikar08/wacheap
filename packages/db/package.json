@@ -2,12 +2,18 @@
   "name": "@wab/db",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./*": "./src/*.ts"
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "types": "./dist/src/*.d.ts",
+      "default": "./src/*.ts"
+    }
   },
   "scripts": {
-    "build": "tsc -b",
-    "check-types": "tsc -b",
+    "build": "tsrs -b",
+    "check-types": "tsrs -b",
     "db:generate": "drizzle-kit generate",
     "db:migrate:deploy": "drizzle-kit migrate"
   },
@@ -18,8 +24,9 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@types/bun": "^1.4.2",
     "@wab/config": "workspace:*",
-    "drizzle-kit": "1.0.0-rc.5",
+    "drizzle-kit": "^0.31.10",
     "typescript": "catalog:",
     "varlock": "catalog:"
   }

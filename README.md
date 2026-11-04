@@ -1,21 +1,19 @@
-# wab
+# WAB (codename)
 
-This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines React, TanStack Router, Hono, ORPC, and more.
+Official WhatsApp broadcast and shared inbox for Indonesian small businesses. It uses Meta's WhatsApp Cloud API with
+your own number, you pay Meta's rate with no markup, and every agent is included.
 
-## Features
+- **Official API only**: no unofficial gateways, so your number isn't at risk of a ban for using one.
+- **0% markup**: Meta bills message fees to your own WhatsApp Business Account. Before every send, the app shows the
+  exact rupiah cost.
+- **Open source** ([AGPL-3.0](LICENSE)): self-host it for free, or use the hosted cloud at a flat fee per number.
 
-- **TypeScript** - For type safety and improved developer experience
-- **TanStack Router** - File-based routing with full type safety
-- **TailwindCSS** - Utility-first CSS for rapid UI development
-- **Shared UI package** - shadcn/ui primitives live in `packages/ui`
-- **Hono** - Lightweight, performant server framework
-- **oRPC** - End-to-end type-safe APIs with OpenAPI integration
-- **workers** - Runtime environment
-- **Drizzle** - TypeScript-first ORM
-- **Cloudflare D1** - Database engine
-- **Authentication** - Better-Auth
-- **Oxlint** - Oxlint + Oxfmt (linting & formatting)
-- **Turborepo** - Optimized monorepo build system
+Status: early scaffold. The v1 scope covers contacts and CSV/XLSX import, templates, scheduled broadcasts with cost
+preview, a shared inbox, a cost dashboard, and an API and MCP. Agent and contributor notes are in [AGENTS.md](AGENTS.md).
+
+Built with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack) (the same stack as
+[JoyoRogo](https://github.com/dzulfikar08/joyorogo)): Hono on Cloudflare Workers, oRPC, Drizzle + D1, better-auth, TanStack
+Router, Turborepo, Alchemy.
 
 ## Getting Started
 
@@ -135,3 +133,9 @@ wab/
 - `bun run check-types`: Check TypeScript types across all apps
 - `bun run db:generate`: Generate database client/types
 - `bun run check`: Run Oxlint and Oxfmt
+- `bun test packages/api/src`: Run API tests (on the D1-guarded test database)
+
+## License
+
+[AGPL-3.0](LICENSE). If you run a modified version as a network service, you must offer its users the source. See
+[NOTICE](NOTICE) for trademarks.

@@ -1,5 +1,6 @@
 {
   "extends": "@wab/config/tsconfig.base.json",
+  "exclude": ["src/**/*.test.ts"],
   "references": [{ "path": "../../packages/api" }],
   "compilerOptions": {
     "noEmit": true,

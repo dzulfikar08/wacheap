@@ -1,7 +1,7 @@
-import { drizzleAdapter } from "@better-auth/drizzle-adapter/relations-v2";
 import type { Database } from "@wab/db";
 import * as schema from "@wab/db/schema/auth";
 import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
 
 export type AuthConfig = {
   BETTER_AUTH_URL: string;

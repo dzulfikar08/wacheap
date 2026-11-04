@@ -1,6 +1,7 @@
 {
   "extends": "@wab/config/tsconfig.base.json",
   "compilerOptions": {
+    "types": ["node", "@cloudflare/workers-types", "bun"],
     "composite": true,
     "declaration": true,
     "declarationMap": true,

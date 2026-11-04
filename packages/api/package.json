@@ -2,12 +2,20 @@
   "name": "@wab/api",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./*": "./src/*.ts"
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "types": "./dist/src/*.d.ts",
+      "default": "./src/*.ts"
+    }
   },
   "scripts": {
-    "build": "tsc -b",
-    "check-types": "tsc -b"
+    "build": "tsrs -b",
+    "check-types": "tsrs -b",
+    "test": "bun test src",
+    "dev": "tsrs -b --watch"
   },
   "dependencies": {
     "@orpc/client": "catalog:",
@@ -16,9 +24,11 @@
     "@orpc/zod": "catalog:",
     "@wab/auth": "workspace:*",
     "@wab/db": "workspace:*",
+    "drizzle-orm": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@types/bun": "^1.4.2",
     "@wab/config": "workspace:*",
     "typescript": "catalog:"
   }

@@ -2,22 +2,27 @@
   "name": "@wab/auth",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./*": "./src/*.ts"
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "types": "./dist/src/*.d.ts",
+      "default": "./src/*.ts"
+    }
   },
   "scripts": {
-    "build": "tsc -b",
-    "check-types": "tsc -b"
+    "build": "tsrs -b",
+    "check-types": "tsrs -b",
+    "test": "bun test src"
   },
   "dependencies": {
-    "@better-auth/core": "1.7.12",
-    "@better-auth/drizzle-adapter": "1.7.12",
     "@wab/db": "workspace:*",
     "better-auth": "catalog:",
-    "drizzle-orm": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@types/bun": "^1.4.2",
     "@wab/config": "workspace:*",
     "typescript": "catalog:"
   }

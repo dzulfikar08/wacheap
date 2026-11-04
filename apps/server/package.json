@@ -3,10 +3,11 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "build": "tsc -b ../../packages/api && tsdown",
-    "check-types": "tsc -b ../../packages/api && tsc --noEmit",
+    "build": "tsrs -b ../../packages/api && tsdown",
+    "check-types": "tsrs -b ../../packages/api && tsrs --noEmit",
     "compile": "bun build --compile --no-compile-autoload-dotenv --minify --sourcemap --bytecode ./src/index.ts --outfile server",
-    "env:generate": "varlock codegen"
+    "env:generate": "varlock codegen",
+    "test": "bun test src"
   },
   "dependencies": {
     "@orpc/openapi": "catalog:",
@@ -22,7 +23,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
-    "@types/node": "^26.4.1",
+    "@types/node": "catalog:",
     "@wab/config": "workspace:*",
     "@wab/infra": "workspace:*",
     "tsdown": "^0.23.0",

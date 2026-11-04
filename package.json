@@ -1,6 +1,7 @@
 {
   "name": "wab",
   "private": true,
+  "license": "AGPL-3.0-only",
   "workspaces": {
     "packages": [
       "apps/*",
@@ -9,17 +10,23 @@
     "catalog": {
       "zod": "^4.5.4",
       "typescript": "^6.0.3",
-      "varlock": "1.23.0",
+      "@types/node": "^26.4.1",
+      "varlock": "1.18.0",
       "@cloudflare/workers-types": "^5.20260906.1",
-      "@orpc/server": "^1.15.6",
-      "@orpc/openapi": "^1.15.6",
-      "@orpc/zod": "^1.15.6",
-      "better-auth": "1.7.12",
+      "@orpc/server": "^1.15.0",
+      "@orpc/openapi": "^1.15.0",
+      "@orpc/zod": "^1.15.0",
+      "@orpc/client": "^1.15.0",
+      "@orpc/tanstack-query": "^1.15.0",
+      "@tanstack/react-query": "^5.102.8",
+      "@tanstack/react-form": "^1.33.5",
+      "better-auth": "1.7.3",
+      "drizzle-orm": "^0.45.2",
+      "lucide-react": "^1.41.0",
       "next-themes": "^0.4.6",
       "sonner": "^2.0.8",
-      "@orpc/client": "^1.15.6",
-      "tailwindcss": "^4.3.3",
-      "drizzle-orm": "1.0.0-rc.5"
+      "@types/react-dom": "^19.2.7",
+      "tailwindcss": "^4.3.3"
     }
   },
   "type": "module",
@@ -27,13 +34,15 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "check-types": "turbo run check-types",
+    "test": "turbo run test",
+    "postinstall": "tsrs -b packages/api && varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/",
+    "dev:types": "tsrs -b packages/api --watch",
     "dev:web": "turbo run dev:bare -F web --",
     "dev:server": "turbo run dev:bare -F hono --",
     "db:generate": "turbo run db:generate -F @wab/db --",
     "deploy": "turbo run deploy -F @wab/infra --",
     "destroy": "turbo run destroy -F @wab/infra --",
     "env:generate": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/",
-    "postinstall": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/",
     "check": "oxlint && oxfmt --write"
   },
   "dependencies": {
@@ -41,11 +50,12 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "catalog:",
-    "@types/node": "^26.4.1",
+    "@types/node": "catalog:",
     "@wab/config": "workspace:*",
-    "oxfmt": "^0.74.0",
-    "oxlint": "^1.87.0",
-    "turbo": "^2.11.7",
+    "oxfmt": "^0.66.0",
+    "oxlint": "^1.81.0",
+    "tsrs": "0.18.0-ts7.1.0-dev.20260929",
+    "turbo": "^2.10.12",
     "typescript": "catalog:",
     "varlock": "catalog:"
   },
