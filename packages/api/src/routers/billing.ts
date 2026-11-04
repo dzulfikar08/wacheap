@@ -12,7 +12,7 @@ import {
   orderAmount,
   type BillingPlan,
 } from "../lib/billing/plan";
-import { ensureBillingAccount } from "../lib/billing/store";
+import { RECONCILE_AFTER_MS, ensureBillingAccount, reconcileOrder } from "../lib/billing/store";
 import { CLOUD_PLAN } from "../lib/pricing";
 
 export const checkoutInput = z.object({
@@ -58,7 +58,14 @@ export const billingRouter = {
       });
     }
     const now = new Date();
-    await ensureBillingAccount(db, session.user.id, now);
+    const state = await ensureBillingAccount(db, session.user.id, now);
+    // Paid time is bought for a number count. Changing the count mid-period would stretch or shrink time already paid
+    // for, so while paid time runs a renewal must keep the count (changing it waits for prorating, WAB-11).
+    if (billingStatus(state, now).status === "active" && input.numbers !== state.numbers) {
+      throw new ORPCError("BAD_REQUEST", {
+        message: `Masa aktifmu untuk ${state.numbers} nomor. Perpanjang dengan jumlah yang sama; jumlah nomor bisa diubah setelah masa aktif habis.`,
+      });
+    }
     const amount = orderAmount(input.plan, input.numbers);
     const id = crypto.randomUUID();
     const ref = buildOrderId(now);
@@ -103,24 +110,48 @@ export const billingRouter = {
   order: protectedProcedure
     .input(z.object({ ref: z.string().min(1).max(64) }))
     .handler(async ({ input, context }) => {
-      const [order] = await context.db
-        .select({
-          ref: billingOrder.providerRef,
-          plan: billingOrder.plan,
-          numbers: billingOrder.numbers,
-          amount: billingOrder.amount,
-          status: billingOrder.status,
-          paidUntil: billingOrder.paidUntil,
-        })
-        .from(billingOrder)
-        .where(
-          and(
-            eq(billingOrder.providerRef, input.ref),
-            eq(billingOrder.userId, context.session.user.id),
-          ),
-        )
-        .limit(1);
+      const read = () =>
+        context.db
+          .select({
+            ref: billingOrder.providerRef,
+            plan: billingOrder.plan,
+            numbers: billingOrder.numbers,
+            amount: billingOrder.amount,
+            status: billingOrder.status,
+            paidUntil: billingOrder.paidUntil,
+            createdAt: billingOrder.createdAt,
+          })
+          .from(billingOrder)
+          .where(
+            and(
+              eq(billingOrder.providerRef, input.ref),
+              eq(billingOrder.userId, context.session.user.id),
+            ),
+          )
+          .limit(1)
+          .then((rows) => rows[0]);
+      let order = await read();
       if (!order) throw new ORPCError("NOT_FOUND", { message: "Pesanan tidak ditemukan." });
-      return order;
+      // The webhook may have been lost: ask DOKU about a pending order once it's old enough, and settle it here.
+      const now = new Date();
+      if (
+        order.status === "pending" &&
+        context.billing.doku &&
+        now.getTime() - order.createdAt.getTime() > RECONCILE_AFTER_MS
+      ) {
+        if (
+          await reconcileOrder(
+            context.db,
+            context.billing.doku,
+            input.ref,
+            now,
+            context.billing.fetch,
+          )
+        ) {
+          order = (await read()) ?? order;
+        }
+      }
+      const { createdAt: _createdAt, ...rest } = order;
+      return rest;
     }),
 };

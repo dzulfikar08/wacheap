@@ -156,10 +156,12 @@ describe("createCheckout", () => {
     let seen: { url: string; headers: Headers; body: string } | null = null;
     const fake = (async (url: string, init: RequestInit) => {
       seen = { url, headers: new Headers(init.headers), body: String(init.body) };
-      return Response.json({ response: { payment: { url: "https://pay.doku.test/abc" } } });
+      return Response.json({
+        response: { payment: { url: "https://sandbox.doku.com/checkout-link-v2/abc" } },
+      });
     }) as unknown as typeof fetch;
     const { paymentUrl } = await createCheckout(config, params, fake);
-    expect(paymentUrl).toBe("https://pay.doku.test/abc");
+    expect(paymentUrl).toBe("https://sandbox.doku.com/checkout-link-v2/abc");
     const req = seen!;
     expect(req.url).toBe("https://api-sandbox.doku.com/checkout/v1/payment");
     const body = JSON.parse(req.body);
@@ -190,5 +192,22 @@ describe("createCheckout", () => {
     const fake = (async () =>
       Response.json({ error: "nope" }, { status: 400 })) as unknown as typeof fetch;
     await expect(createCheckout(config, params, fake)).rejects.toThrow("HTTP 400");
+  });
+});
+
+describe("isDokuPaymentUrl", () => {
+  test("accepts https on doku.com hosts only", async () => {
+    const { isDokuPaymentUrl } = await import("./doku");
+    expect(isDokuPaymentUrl("https://sandbox.doku.com/checkout-link-v2/abc")).toBe(true);
+    expect(isDokuPaymentUrl("https://jokul.doku.com/checkout/link/abc")).toBe(true);
+    for (const bad of [
+      "http://jokul.doku.com/x",
+      "https://doku.com.evil.example/x",
+      "https://evil.example/doku.com",
+      "javascript:alert(1)",
+      "nope",
+    ]) {
+      expect(isDokuPaymentUrl(bad)).toBe(false);
+    }
   });
 });

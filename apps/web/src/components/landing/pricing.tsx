@@ -91,7 +91,7 @@ export function Pricing() {
           {yearly ? "Dibayar per tahun" : "Dibayar per bulan"}, coba gratis {CLOUD_PLAN.trialDays}{" "}
           hari
         </p>
-        <p className="wc-price-includes">Semua paket termasuk</p>
+        <p className="wc-price-includes">Termasuk saat peluncuran</p>
         <ul className="wc-checks">
           {INCLUDED.map((item) => (
             <li key={item}>{item}</li>

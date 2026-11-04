@@ -123,3 +123,12 @@ describe("assertCanSend", () => {
     expect(() => assertCanSend(expired, now, { enabled: false })).not.toThrow();
   });
 });
+
+describe("extendPaidUntil, WIB vs UTC", () => {
+  test("31 Mar 05:00 WIB + 1 month is 30 Apr (UTC arithmetic would land on 1 May WIB)", () => {
+    // 31 Mar 05:00 WIB is still 30 Mar in UTC, so a UTC-calendar month would give 30 Apr 22:00 UTC = 1 May 05:00 WIB.
+    expect(extendPaidUntil(null, wib("2027-03-31T05:00:00"), "monthly")).toEqual(
+      wib("2027-04-30T05:00:00"),
+    );
+  });
+});

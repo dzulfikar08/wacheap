@@ -28,7 +28,9 @@ async function setup(billing: Partial<BillingConfig> = {}) {
   const calls: { body: unknown }[] = [];
   const fakeFetch = (async (_url: string, init: RequestInit) => {
     calls.push({ body: JSON.parse(String(init.body)) });
-    return Response.json({ response: { payment: { url: "https://pay.doku.test/x" } } });
+    return Response.json({
+      response: { payment: { url: "https://sandbox.doku.com/checkout-link-v2/x" } },
+    });
   }) as unknown as typeof fetch;
   const config: BillingConfig = {
     enabled: true,
@@ -122,7 +124,7 @@ describe("billing.checkout", () => {
       { plan: "yearly", numbers: 3 },
       { context: as("u1") },
     );
-    expect(result.paymentUrl).toBe("https://pay.doku.test/x");
+    expect(result.paymentUrl).toBe("https://sandbox.doku.com/checkout-link-v2/x");
     expect(result.amount).toBe(CLOUD_PLAN.yearly * 3);
     const [order] = await db.select().from(billingOrder);
     expect(order).toMatchObject({
@@ -133,7 +135,7 @@ describe("billing.checkout", () => {
       status: "pending",
       provider: "doku",
       providerRef: result.order,
-      paymentUrl: "https://pay.doku.test/x",
+      paymentUrl: "https://sandbox.doku.com/checkout-link-v2/x",
     });
     expect(calls[0]?.body).toMatchObject({
       order: {
@@ -337,6 +339,97 @@ describe("billing.order", () => {
     );
     await expect(call(billingRouter.order, { ref }, { context: as("u2") })).rejects.toMatchObject({
       code: "NOT_FOUND",
+    });
+  });
+});
+
+describe("billing fixes from review", () => {
+  test("while paid time runs, a renewal must keep the number count", async () => {
+    const { db, as } = await setup();
+    await call(billingRouter.status, undefined, { context: as("u1") });
+    const { order } = await call(
+      billingRouter.checkout,
+      { plan: "monthly", numbers: 1 },
+      { context: as("u1") },
+    );
+    expect((await notify(db, { ref: order, amount: CLOUD_PLAN.monthly })).status).toBe(200);
+    await expect(
+      call(billingRouter.checkout, { plan: "monthly", numbers: 10 }, { context: as("u1") }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await call(billingRouter.checkout, { plan: "yearly", numbers: 1 }, { context: as("u1") });
+  });
+
+  test("a paid order whose webhook never came is settled from DOKU's status API when polled", async () => {
+    const { db, as } = await setup();
+    await call(billingRouter.status, undefined, { context: as("u1") });
+    const { order } = await call(
+      billingRouter.checkout,
+      { plan: "monthly", numbers: 1 },
+      { context: as("u1") },
+    );
+    // Age the order past the reconcile threshold.
+    await db
+      .update(billingOrder)
+      .set({ createdAt: new Date(Date.now() - 60_000) })
+      .where(eq(billingOrder.providerRef, order));
+    let statusCalls = 0;
+    const statusFetch = (async (url: string) => {
+      statusCalls++;
+      expect(String(url)).toContain(`/orders/v1/status/${order}`);
+      return Response.json({
+        order: { invoice_number: order, amount: CLOUD_PLAN.monthly },
+        transaction: { status: "SUCCESS" },
+      });
+    }) as unknown as typeof fetch;
+    const ctx = { ...as("u1"), billing: { ...as("u1").billing, fetch: statusFetch } };
+    const polled = await call(billingRouter.order, { ref: order }, { context: ctx });
+    expect(statusCalls).toBe(1);
+    expect(polled.status).toBe("paid");
+    expect((await account(db, "u1"))?.paidUntil).toBeTruthy();
+  });
+
+  test("a fresh pending order is not asked about yet, and a failed lookup changes nothing", async () => {
+    const { db, as } = await setup();
+    await call(billingRouter.status, undefined, { context: as("u1") });
+    const { order } = await call(
+      billingRouter.checkout,
+      { plan: "monthly", numbers: 1 },
+      { context: as("u1") },
+    );
+    let statusCalls = 0;
+    const down = (async () => {
+      statusCalls++;
+      return new Response("bad gateway", { status: 502 });
+    }) as unknown as typeof fetch;
+    const ctx = { ...as("u1"), billing: { ...as("u1").billing, fetch: down } };
+    expect((await call(billingRouter.order, { ref: order }, { context: ctx })).status).toBe(
+      "pending",
+    );
+    expect(statusCalls).toBe(0);
+    await db
+      .update(billingOrder)
+      .set({ createdAt: new Date(Date.now() - 60_000) })
+      .where(eq(billingOrder.providerRef, order));
+    expect((await call(billingRouter.order, { ref: order }, { context: ctx })).status).toBe(
+      "pending",
+    );
+    expect(statusCalls).toBe(1);
+  });
+
+  test("EXPIRED then SUCCESS still credits the order once", async () => {
+    const { db, as } = await setup();
+    await call(billingRouter.status, undefined, { context: as("u1") });
+    const { order } = await call(
+      billingRouter.checkout,
+      { plan: "monthly", numbers: 1 },
+      { context: as("u1") },
+    );
+    await notify(db, { ref: order, amount: CLOUD_PLAN.monthly, status: "EXPIRED" });
+    expect((await notify(db, { ref: order, amount: CLOUD_PLAN.monthly })).body).toMatchObject({
+      activated: true,
+    });
+    expect((await notify(db, { ref: order, amount: CLOUD_PLAN.monthly })).body).toMatchObject({
+      activated: false,
     });
   });
 });

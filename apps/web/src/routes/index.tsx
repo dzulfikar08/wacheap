@@ -125,7 +125,7 @@ function faq() {
     ],
     [
       "Bisa pindah dari penyedia lain?",
-      "Bisa. Ekspor kontak dari penyedia lamamu (misalnya Qontak atau Wati) lalu impor ke WACheap. Tanda setuju dihubungi ikut dibawa, dan kontak tanpa tanda setuju dilewati.",
+      "Akan bisa. Kamu akan bisa mengekspor kontak dari penyedia lamamu (misalnya Qontak atau Wati) lalu mengimpornya ke WACheap. Tanda setuju dihubungi ikut dibawa, dan kontak tanpa tanda setuju dilewati.",
     ],
     [
       "Apa bedanya promo dan update pesanan?",
@@ -181,7 +181,7 @@ function Landing() {
           Semua yang kamu lihat di sini juga akan bisa dikerjakan AI agent kamu.{" "}
           <a href="#agent">Lihat caranya</a>
         </p>
-        <ul className="wc-agent-names" aria-label="AI agent yang didukung">
+        <ul className="wc-agent-names" aria-label="AI agent yang akan didukung">
           {["ChatGPT", "Claude", "Cursor", "Codex", "Claude Code"].map((n) => (
             <li key={n}>{n}</li>
           ))}
@@ -240,7 +240,7 @@ function Landing() {
 
       <section className="wc-section" id="agent" aria-labelledby="agent-judul">
         <h2 id="agent-judul" className="wc-h2">
-          AI agent kamu bisa mengerjakan semuanya
+          AI agent kamu akan bisa mengerjakan semuanya
         </h2>
         <ul className="wc-agent-list">
           {AGENT_STEPS.map(([text, tool]) => (

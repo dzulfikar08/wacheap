@@ -29,11 +29,17 @@ const POLL_FOR_MS = 10 * 60 * 1000;
 function ReturnPage() {
   const { order: ref } = Route.useSearch();
   const [startedAt] = useState(() => Date.now());
+  // Date.now() isn't state: a timer flips this so the page re-renders when polling gives up.
+  const [gaveUp, setGaveUp] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setGaveUp(true), POLL_FOR_MS);
+    return () => clearTimeout(t);
+  }, []);
   const order = useQuery({
     ...orpc.billing.order.queryOptions({ input: { ref: ref ?? "" } }),
     enabled: Boolean(ref),
     refetchInterval: (query) =>
-      query.state.data?.status === "pending" && Date.now() - startedAt < POLL_FOR_MS
+      query.state.data?.status === "pending" && !gaveUp && Date.now() - startedAt < POLL_FOR_MS
         ? POLL_MS
         : false,
   });
@@ -51,8 +57,11 @@ function ReturnPage() {
     title = "Pesanan tidak dikenal";
     description = "Buka halaman Langganan untuk melihat status terbaru.";
   } else if (order.isError) {
-    title = "Pesanan tidak ditemukan";
-    description = "Buka halaman Langganan untuk melihat status terbaru.";
+    const notFound = (order.error as { code?: string } | null)?.code === "NOT_FOUND";
+    title = notFound ? "Pesanan tidak ditemukan" : "Status belum bisa dimuat";
+    description = notFound
+      ? "Buka halaman Langganan untuk melihat status terbaru."
+      : "Koneksi ke server terputus. Muat ulang halaman ini; pembayaranmu tetap tercatat.";
   } else if (status === "paid" && order.data) {
     title = "Pembayaran diterima";
     description = `${rupiah(order.data.amount)} untuk ${order.data.numbers} nomor. Aktif sampai ${
@@ -61,9 +70,9 @@ function ReturnPage() {
   } else if (status === "expired" || status === "failed") {
     title = status === "expired" ? "Pembayaran kedaluwarsa" : "Pembayaran gagal";
     description = "Pesanan ini tidak terbayar. Buat pembayaran baru dari halaman Langganan.";
-  } else if (status === "pending" && Date.now() - startedAt >= POLL_FOR_MS) {
+  } else if (status === "pending" && gaveUp) {
     description =
-      "Belum ada konfirmasi dari DOKU. Jika Anda sudah membayar, masa aktif akan bertambah otomatis begitu konfirmasi masuk.";
+      "Belum ada konfirmasi dari DOKU. Jika Anda sudah membayar, muat ulang halaman ini nanti: kami menanyakan status pesanan ke DOKU setiap kali halaman ini dibuka.";
   }
 
   return (

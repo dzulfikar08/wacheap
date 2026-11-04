@@ -194,5 +194,61 @@ export async function createCheckout(
   if (!res.ok || typeof url !== "string") {
     throw new Error(`doku checkout failed: HTTP ${res.status}`);
   }
+  if (!isDokuPaymentUrl(url))
+    throw new Error("doku checkout returned a payment URL outside doku.com");
   return { paymentUrl: url };
+}
+
+/** The browser is sent here, so only an https URL on a doku.com host is accepted. */
+export function isDokuPaymentUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === "https:" &&
+      (url.hostname === "doku.com" || url.hostname.endsWith(".doku.com"))
+    );
+  } catch {
+    return false;
+  }
+}
+
+export const STATUS_TARGET = (orderId: string) =>
+  `/orders/v1/status/${encodeURIComponent(orderId)}`;
+
+/**
+ * Ask DOKU for an order's state (Checkout Check Status API, ported from joyorogo). Same order/transaction shape as the
+ * notification, so parseNotification reads it. Settles orders whose webhook never arrived.
+ */
+export async function checkStatus(
+  config: DokuConfig,
+  orderId: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<DokuNotification> {
+  const target = STATUS_TARGET(orderId);
+  const requestId = crypto.randomUUID();
+  const timestamp = requestTimestamp();
+  const signature = await signRequest(
+    { clientId: config.clientId, requestId, timestamp, target },
+    config.secretKey,
+  );
+  const res = await fetchImpl(`${config.baseUrl}${target}`, {
+    headers: {
+      "Client-Id": config.clientId,
+      "Request-Id": requestId,
+      "Request-Timestamp": timestamp,
+      Signature: signature,
+    },
+    signal: AbortSignal.timeout(10_000),
+  });
+  const text = await res.text();
+  let parsed: DokuNotification | null = null;
+  try {
+    parsed = parseNotification(JSON.parse(text));
+  } catch {
+    // Non-JSON error page; reported below.
+  }
+  if (!res.ok || !parsed || parsed.invoiceNumber !== orderId) {
+    throw new Error(`doku check status failed: HTTP ${res.status}`);
+  }
+  return parsed;
 }

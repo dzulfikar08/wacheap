@@ -17,6 +17,7 @@
   --mono: "IBM Plex Mono", ui-monospace, monospace;
 
   min-height: 100svh;
+  overflow-x: clip;
   color-scheme: light;
   background: var(--wc-bg);
   color: var(--wc-ink);
@@ -216,12 +217,16 @@
 }
 .wc-tabs {
   display: inline-flex;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
   gap: 0.25rem;
   padding: 0.3rem;
   border-radius: 999px;
   background: #ececec;
 }
 .wc-tab {
+  flex: none;
   border: 0;
   border-radius: 999px;
   padding: 0.5rem 1.1rem;
@@ -1388,6 +1393,14 @@
   .wc-checks,
   .wc-footer-inner {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 24rem) {
+  .wc-rotate {
+    font-size: 0.66em;
+  }
+  .wc-tab {
+    padding: 0.45rem 0.75rem;
   }
 }
 @media (prefers-reduced-motion: reduce) {
