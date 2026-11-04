@@ -1,6 +1,11 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { HeadContent, Outlet, createRootRouteWithContext } from "@tanstack/react-router";
+import {
+  HeadContent,
+  Outlet,
+  createRootRouteWithContext,
+  useRouterState,
+} from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { Toaster } from "@wacheap/ui/components/sonner";
 
@@ -30,13 +35,24 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
     links: [
       {
         rel: "icon",
-        href: "/favicon.ico",
+        href: "/favicon.svg",
+        type: "image/svg+xml",
       },
     ],
   }),
 });
 
 function RootComponent() {
+  // The landing page draws its own header and colours; the app chrome starts at sign-in.
+  const isLanding = useRouterState({ select: (s) => s.location.pathname === "/" });
+  if (isLanding) {
+    return (
+      <>
+        <HeadContent />
+        <Outlet />
+      </>
+    );
+  }
   return (
     <>
       <HeadContent />

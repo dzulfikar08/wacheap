@@ -1,0 +1,462 @@
+/* WACheap landing. Scoped under .wc so the app's Tailwind theme (dark by default) never leaks in.
+   Palette: kraft box behind the hero, thermal-receipt white, cool paper grey, ballpoint ink, stamp blue,
+   one highlighter yellow (the Rp0 markup line). */
+.wc {
+  --kraft: #c49a6c;
+  --kraft-deep: #a87d4f;
+  --receipt: #ffffff;
+  --paper: #eef0ec;
+  --ink: #1c2233;
+  --ink-soft: #4a5063;
+  --stamp: #2347c5;
+  --stamp-dark: #1a3699;
+  --marker: #ffe14d;
+  --sans: "Bricolage Grotesque Variable", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  min-height: 100svh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  font-optical-sizing: auto;
+}
+
+.wc a {
+  color: inherit;
+}
+
+.wc :focus-visible {
+  outline: 3px solid var(--stamp);
+  outline-offset: 2px;
+}
+
+.wc-skip {
+  position: absolute;
+  left: -999px;
+}
+.wc-skip:focus {
+  left: 1rem;
+  top: 1rem;
+  z-index: 10;
+  background: var(--receipt);
+  padding: 0.5rem 0.75rem;
+}
+
+/* Nav sits on the kraft band with the hero. */
+.wc-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 1.25rem clamp(1.25rem, 4vw, 3rem);
+  background: var(--kraft);
+}
+.wc-wordmark {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  text-decoration: none;
+}
+.wc-nav nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+}
+.wc-nav nav a {
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.25rem 0;
+}
+.wc-nav nav a:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.wc-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: clamp(2rem, 5vw, 4.5rem);
+  align-items: start;
+  padding: clamp(2rem, 5vw, 4rem) clamp(1.25rem, 4vw, 3rem) clamp(3rem, 7vw, 6rem);
+  background: var(--kraft);
+  /* Corrugation: faint vertical flutes, as on a shipping box. */
+  background-image: repeating-linear-gradient(90deg, transparent 0 6px, rgb(0 0 0 / 0.035) 6px 7px);
+}
+.wc-hero h1 {
+  margin: 0;
+  max-width: 14ch;
+  font-size: clamp(2.6rem, 6.4vw, 5.25rem);
+  line-height: 0.98;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  font-stretch: 85%;
+}
+.wc-lede {
+  max-width: 34rem;
+  margin: 1.5rem 0 0;
+  font-size: 1.1875rem;
+}
+.wc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: center;
+  margin-top: 2rem;
+}
+.wc-status {
+  margin: 1.25rem 0 0;
+  font-size: 0.9375rem;
+  color: #3a2c1c;
+}
+
+.wc-button {
+  display: inline-block;
+  border: 0;
+  border-radius: 0.375rem;
+  padding: 0.85rem 1.35rem;
+  background: var(--stamp);
+  color: #fff !important;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.wc-button:hover {
+  background: var(--stamp-dark);
+}
+.wc-button:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+.wc-link {
+  font-weight: 600;
+  text-underline-offset: 0.2em;
+}
+
+/* The receipt: the one bold element. */
+.wc-receipt {
+  margin: 0;
+  max-width: 25rem;
+  justify-self: end;
+  width: 100%;
+}
+.wc-receipt-controls {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem 1rem;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+.wc-segment {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 0.5rem;
+  background: var(--kraft-deep);
+}
+.wc-segment-option {
+  flex: 1;
+  border: 0;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.6rem;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.wc-segment-option[aria-checked="true"] {
+  background: var(--receipt);
+}
+.wc-buyers {
+  display: flex;
+  gap: 0.6rem;
+  align-items: baseline;
+  font-weight: 600;
+}
+.wc-buyers-number {
+  width: 6.5rem;
+  border: 2px solid var(--ink);
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: var(--receipt);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 1rem;
+}
+.wc-slider {
+  grid-column: 1 / -1;
+  width: 100%;
+  accent-color: var(--stamp);
+}
+
+.wc-receipt-paper {
+  position: relative;
+  padding: 1.5rem 1.5rem 2.25rem;
+  background: var(--receipt);
+  font-family: var(--mono);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  rotate: -1.25deg;
+  box-shadow:
+    0 1px 0 rgb(0 0 0 / 0.08),
+    0 18px 30px -18px rgb(60 35 10 / 0.55);
+  /* Torn bottom edge. */
+  --tooth: 10px;
+  mask:
+    linear-gradient(#000 0 0) top / 100% calc(100% - var(--tooth)) no-repeat,
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom /
+      calc(var(--tooth) * 2) var(--tooth) repeat-x;
+}
+.wc-receipt-head {
+  display: grid;
+  gap: 0.1rem;
+  margin: 0 0 1rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 2px dashed var(--ink);
+  text-align: center;
+}
+.wc-receipt-head strong {
+  font-size: 1.125rem;
+  letter-spacing: 0.2em;
+}
+.wc-receipt-lines {
+  margin: 0;
+}
+.wc-receipt-lines > div {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+  padding: 0.15rem 0;
+}
+.wc-receipt-lines dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.wc-receipt-markup {
+  margin: 0.4rem -0.35rem;
+  padding: 0.15rem 0.35rem !important;
+  background: var(--marker);
+  font-weight: 600;
+}
+.wc-receipt-total {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem !important;
+  border-top: 2px dashed var(--ink);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.wc-receipt-foot {
+  margin: 1rem 0 0;
+  font-size: 0.8125rem;
+  text-align: center;
+}
+.wc-receipt-compare {
+  margin-top: 1.4rem;
+  font-size: 0.9375rem;
+  color: #2e2214;
+}
+
+/* Below the hero: quiet, left aligned, one column of reading width. */
+.wc-section {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: clamp(3rem, 7vw, 5rem) clamp(1.25rem, 4vw, 3rem) 0;
+}
+.wc-section h2 {
+  margin: 0 0 1.75rem;
+  font-size: clamp(1.75rem, 3.4vw, 2.5rem);
+  line-height: 1.1;
+  font-weight: 750;
+  letter-spacing: -0.025em;
+}
+.wc-section h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1.1875rem;
+  line-height: 1.25;
+  font-weight: 700;
+}
+.wc-section p {
+  margin: 0;
+  max-width: 38rem;
+  color: var(--ink-soft);
+}
+
+.wc-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2rem 2.5rem;
+}
+.wc-facts > div {
+  border-top: 3px solid var(--ink);
+  padding-top: 1rem;
+}
+
+.wc-steps {
+  display: grid;
+  gap: 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+.wc-steps li {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  column-gap: 1rem;
+  counter-increment: step;
+}
+.wc-steps li::before {
+  content: counter(step);
+  grid-row: span 2;
+  font-size: 2.25rem;
+  line-height: 1;
+  font-weight: 800;
+  color: var(--stamp);
+}
+
+.wc-plans {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 22rem));
+  gap: 1.5rem;
+}
+.wc-plan {
+  padding: 1.5rem;
+  border: 2px solid var(--ink);
+  border-radius: 0.5rem;
+  background: var(--receipt);
+}
+.wc-price {
+  margin: 0.25rem 0 1rem !important;
+  color: var(--ink) !important;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.wc-price span {
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.wc-plan ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--ink-soft);
+}
+.wc-plan li + li {
+  margin-top: 0.3rem;
+}
+.wc-note {
+  margin-top: 1rem !important;
+  font-size: 0.9375rem;
+}
+
+.wc-signup {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 2rem 3rem;
+  align-items: start;
+}
+.wc-signup h2 {
+  margin-bottom: 0.75rem;
+}
+.wc-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  background: var(--receipt);
+}
+.wc-form .wc-button,
+.wc-form-error {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+.wc-field {
+  display: grid;
+  min-width: 0;
+  gap: 0.3rem;
+}
+.wc-field label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+.wc-field input,
+.wc-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 2.75rem;
+  border: 2px solid #b9bdc7;
+  border-radius: 0.375rem;
+  padding: 0.5rem 0.65rem;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+.wc-field input:focus,
+.wc-field select:focus {
+  border-color: var(--stamp);
+}
+.wc-form-error {
+  color: #a3261b !important;
+  font-weight: 600;
+}
+.wc-form-done {
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  background: var(--receipt);
+  color: var(--ink) !important;
+  font-weight: 600;
+}
+
+.wc-faq {
+  display: grid;
+  max-width: 44rem;
+  border-top: 2px solid var(--ink);
+}
+.wc-faq details {
+  border-bottom: 1px solid #c3c7cf;
+  padding: 1rem 0;
+}
+.wc-faq summary {
+  font-weight: 650;
+  cursor: pointer;
+}
+.wc-faq details p {
+  margin-top: 0.6rem;
+}
+
+.wc-footer {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 4rem clamp(1.25rem, 4vw, 3rem) 3rem;
+  font-size: 0.875rem;
+  color: var(--ink-soft);
+}
+.wc-footer p {
+  margin: 0.2rem 0;
+}
+
+@media (max-width: 52rem) {
+  .wc-hero,
+  .wc-signup {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wc-receipt {
+    justify-self: start;
+  }
+  .wc-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .wc-plans,
+  .wc-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
