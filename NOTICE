@@ -16,4 +16,13 @@ Trademarks
   to identify the WhatsApp Business Platform (Cloud API) this software talks
   to; this project is not sponsored or endorsed by Meta.
 
+Design credit
+  The public landing page follows the structure and visual language of
+  mailcheap.ai, by Marc Lou (open-source newsletter app, AGPL-3.0,
+  github.com/marclou/mailcheap), which WACheap was modelled on. The code, copy
+  and illustrations here are WACheap's own.
+
+Fonts
+  Newsreader, Geist and IBM Plex Mono, under the SIL Open Font License.
+
 Third-party code is used under the licenses listed in each package's metadata.
