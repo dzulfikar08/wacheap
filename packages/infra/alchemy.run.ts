@@ -35,8 +35,10 @@ export const server = Cloudflare.Worker("server", {
     // One room per workspace: live inbox updates to every agent's open tab over hibernating WebSockets.
     INBOX: Cloudflare.DurableObject<InboxRoom>("InboxRoom"),
     // Public sign-up endpoints: 5 calls a minute per IP (Cloudflare counts per location, so it's approximate).
+    // Namespace ids are account-wide and shared between Workers that use the same one (joyorogo and mailflare hold
+    // 1001-1005, 2001-2003, 7101-7106, 10001-10003). WACheap owns 4711 (production) and 4712 (every other stage).
     SIGNUP_LIMIT: Cloudflare.RateLimit("SIGNUP_LIMIT", {
-      namespaceId: 1001,
+      namespaceId: production ? 4711 : 4712,
       simple: { limit: 5, period: 60 },
     }),
     CORS_ORIGIN: Config.String("CORS_ORIGIN"),

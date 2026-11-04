@@ -1,10 +1,10 @@
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
-import { onError } from "@orpc/server";
+import { onError, ORPCError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import { appRouter } from "@wacheap/api/routers/index";
-import { Hono } from "hono";
+import { Hono, type Context, type Next } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 
@@ -36,29 +36,36 @@ export const apiHandler = new OpenAPIHandler(appRouter, {
       schemaConverters: [new ZodToJsonSchemaConverter()],
     }),
   ],
-  interceptors: [
-    onError((error) => {
-      console.error(error);
-    }),
-  ],
+  interceptors: [onError(logError)],
 });
 
 export const rpcHandler = new RPCHandler(appRouter, {
-  interceptors: [
-    onError((error) => {
-      console.error(error);
-    }),
-  ],
+  interceptors: [onError(logError)],
 });
 
 // The waitlist is a public insert: cap it per IP before it reaches the database.
-app.use("/rpc/waitlist/*", async (c, next) => {
+/**
+ * Validation failures are the caller's mistake and carry the rejected input (emails, phone numbers): log the code only,
+ * so personal data stays out of Workers logs. Everything else is logged in full.
+ */
+function logError(error: unknown) {
+  if (error instanceof ORPCError && error.status < 500) {
+    console.warn(`orpc ${error.code} (${error.status})`);
+    return;
+  }
+  console.error(error);
+}
+
+// Both handlers serve every procedure (RPC at /rpc, OpenAPI at /api-reference), so the cap covers both paths.
+const limitSignups = async (c: Context, next: Next) => {
   const ip = c.req.header("CF-Connecting-IP") ?? "unknown";
   const { success } = await ENV.SIGNUP_LIMIT.limit({ key: `waitlist:${ip}` });
   if (!success)
     return c.json({ message: "Terlalu banyak percobaan. Coba lagi sebentar lagi." }, 429);
   await next();
-});
+};
+app.use("/rpc/waitlist/*", limitSignups);
+app.use("/api-reference/waitlist/*", limitSignups);
 
 app.use("/*", async (c, next) => {
   const context = await createContext({ context: c });

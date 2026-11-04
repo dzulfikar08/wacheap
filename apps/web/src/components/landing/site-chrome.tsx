@@ -13,9 +13,6 @@ export const COMPANY = "PT Joyo Digitama Solusi";
 export const COMPANY_ADDRESS =
   "Vila Bukit Tidar F2 No. 009, Karangbesuki, Sukun, Kota Malang, Jawa Timur";
 
-/** Paths that use the public site chrome instead of the app header. */
-export const PUBLIC_PATHS = new Set(["/", "/privasi", "/ketentuan"]);
-
 export function SiteChrome({ children, home = false }: { children: ReactNode; home?: boolean }) {
   return (
     <div className="wc">

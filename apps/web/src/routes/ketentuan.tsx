@@ -59,16 +59,16 @@ function Ketentuan() {
           </li>
           <li>
             Pembayaran yang sudah diterima tidak dikembalikan, kecuali layanan tidak bisa kami
-            berikan.
+            berikan atau hukum yang berlaku menentukan lain.
           </li>
         </ul>
 
         <h2>Ketersediaan dan tanggung jawab</h2>
         <p>
           Kami berusaha menjaga layanan tetap berjalan, tetapi WACheap bergantung pada Meta dan
-          Cloudflare, dan bisa terganggu di luar kendali kami. Layanan disediakan apa adanya. Kami
-          tidak bertanggung jawab atas kerugian tidak langsung, termasuk pemblokiran nomor oleh Meta
-          karena isi atau cara pengiriman pesanmu.
+          Cloudflare, dan bisa terganggu di luar kendali kami. Sejauh diizinkan hukum yang berlaku,
+          layanan disediakan apa adanya dan kami tidak bertanggung jawab atas kerugian tidak
+          langsung, termasuk pemblokiran nomor oleh Meta karena isi atau cara pengiriman pesanmu.
         </p>
 
         <h2>Kode terbuka</h2>

@@ -14,22 +14,36 @@ const CHANNELS = [
 
 type Channel = Exclude<(typeof CHANNELS)[number][0], "">;
 
-type Problem = { field: "whatsapp" | "email" | null; message: string };
+type Field = "email" | "whatsapp" | "shop";
+type Problem = { fields: Field[]; message: string };
 
-/** What went wrong, in words the visitor can act on. */
+const FIELD_MESSAGES: Record<Field, string> = {
+  email: "alamat email tidak valid",
+  whatsapp: "nomor WhatsApp tidak valid (contoh: 0812 3456 7890)",
+  shop: "nama toko terlalu panjang (maksimal 120 karakter)",
+};
+
+/** What went wrong, in words the visitor can act on, and which fields to mark. */
 function describe(error: unknown): Problem {
-  const status = (error as { status?: number } | null)?.status;
-  const detail = JSON.stringify((error as { data?: unknown } | null)?.data ?? "");
-  if (status === 429)
-    return { field: null, message: "Terlalu banyak percobaan. Tunggu satu menit, lalu coba lagi." };
-  if (status === 400) {
-    if (detail.includes("whatsapp")) {
-      return { field: "whatsapp", message: "Nomor WhatsApp tidak valid. Contoh: 0812 3456 7890." };
-    }
-    return { field: "email", message: "Alamat email tidak valid." };
+  const e = error as { status?: number; data?: { issues?: { path?: unknown[] }[] } } | null;
+  if (e?.status === 429) {
+    return { fields: [], message: "Terlalu banyak percobaan. Tunggu satu menit, lalu coba lagi." };
+  }
+  if (e?.status === 400) {
+    const fields = [
+      ...new Set(
+        (e.data?.issues ?? [])
+          .map((i) => i.path?.[0])
+          .filter((f): f is Field => f === "email" || f === "whatsapp" || f === "shop"),
+      ),
+    ];
+    if (fields.length === 0)
+      return { fields: [], message: "Isian belum valid. Periksa lagi, lalu kirim ulang." };
+    const list = fields.map((f) => FIELD_MESSAGES[f]).join("; ");
+    return { fields, message: `Periksa lagi: ${list}.` };
   }
   return {
-    field: null,
+    fields: [],
     message: "Belum terkirim karena koneksi atau server bermasalah. Coba lagi.",
   };
 }
@@ -44,8 +58,10 @@ export function WaitlistForm() {
   const done = useRef<HTMLParagraphElement>(null);
   const problem = join.isError ? describe(join.error) : null;
   const errorId = `${id}-error`;
-  const invalid = (field: Problem["field"]) =>
-    problem?.field === field ? { "aria-invalid": true as const, "aria-describedby": errorId } : {};
+  const invalid = (field: Field) =>
+    problem?.fields.includes(field)
+      ? { "aria-invalid": true as const, "aria-describedby": errorId }
+      : {};
 
   // The form is replaced on success; keep keyboard focus on the confirmation instead of dropping it to <body>.
   useEffect(() => {
@@ -80,6 +96,7 @@ export function WaitlistForm() {
           type="email"
           required
           autoComplete="email"
+          maxLength={254}
           {...invalid("email")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -92,6 +109,7 @@ export function WaitlistForm() {
           type="tel"
           autoComplete="tel"
           placeholder="0812…"
+          maxLength={32}
           {...invalid("whatsapp")}
           value={whatsapp}
           onChange={(e) => setWhatsapp(e.target.value)}
@@ -102,6 +120,8 @@ export function WaitlistForm() {
         <input
           id={`${id}-shop`}
           autoComplete="organization"
+          maxLength={120}
+          {...invalid("shop")}
           value={shop}
           onChange={(e) => setShop(e.target.value)}
         />

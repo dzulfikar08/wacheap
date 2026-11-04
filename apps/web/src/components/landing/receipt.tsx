@@ -5,7 +5,7 @@ import {
   receiptLines,
   type MessageCategory,
 } from "@wacheap/api/lib/pricing";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 const rupiah = (n: number, fractions = 0) =>
   `Rp${new Intl.NumberFormat("id-ID", { minimumFractionDigits: fractions, maximumFractionDigits: fractions }).format(n)}`;
@@ -43,8 +43,14 @@ export function Receipt() {
   });
   const label = category === "marketing" ? "pesan promo" : "update pesanan";
 
-  // One sentence for screen readers once the value settles, not a bare number on every slider step.
+  // One sentence for screen readers once the value settles, not a bare number on every slider step, and nothing on
+  // page load (the visitor hasn't changed anything yet).
+  const firstRender = useRef(true);
   useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
     const t = setTimeout(
       () =>
         setAnnouncement(`Total ke Meta untuk ${count(buyers)} ${label}: ${rupiah(lines.total)}.`),
