@@ -40,11 +40,14 @@ function loadTurnstile(): Promise<TurnstileApi> {
 export function Turnstile({
   onToken,
   onFail,
+  onInteractive,
   resetKey,
 }: {
   onToken: (token: string | null) => void;
   /** The check couldn't run (script blocked, network, Cloudflare error). */
   onFail: () => void;
+  /** Cloudflare wants the visitor to tick the box before it issues a token. */
+  onInteractive?: () => void;
   resetKey: number;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -53,6 +56,8 @@ export function Turnstile({
   callback.current = onToken;
   const fail = useRef(onFail);
   fail.current = onFail;
+  const interactive = useRef(onInteractive);
+  interactive.current = onInteractive;
 
   useEffect(() => {
     let cancelled = false;
@@ -66,6 +71,7 @@ export function Turnstile({
           action: "waitlist",
           callback: (token: string) => callback.current(token),
           "expired-callback": () => callback.current(null),
+          "before-interactive-callback": () => interactive.current?.(),
           "error-callback": () => {
             callback.current(null);
             fail.current();

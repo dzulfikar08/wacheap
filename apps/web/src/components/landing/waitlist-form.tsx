@@ -62,6 +62,7 @@ export function WaitlistForm() {
   const [token, setToken] = useState<string | null>(null);
   const [resetKey, setResetKey] = useState(0);
   const [checkFailed, setCheckFailed] = useState(false);
+  const [needsTick, setNeedsTick] = useState(false);
   // A Turnstile token is valid once, so every failed attempt gets a fresh one.
   const join = useMutation({
     ...orpc.waitlist.join.mutationOptions(),
@@ -158,13 +159,23 @@ export function WaitlistForm() {
       <Turnstile
         onToken={(t) => {
           setToken(t);
-          if (t) setCheckFailed(false);
+          if (t) {
+            setCheckFailed(false);
+            setNeedsTick(false);
+          }
         }}
         onFail={() => setCheckFailed(true)}
+        onInteractive={() => setNeedsTick(true)}
         resetKey={resetKey}
       />
       <button className="wc-button" type="submit" disabled={join.isPending || !token}>
-        {join.isPending ? "Mendaftarkan…" : waiting ? "Memeriksa browser…" : "Daftar akses awal"}
+        {join.isPending
+          ? "Mendaftarkan…"
+          : waiting
+            ? needsTick
+              ? "Centang verifikasi di atas dulu"
+              : "Memeriksa browser…"
+            : "Daftar akses awal"}
       </button>
       {checkFailed && !problem ? (
         <p className="wc-form-error" role="alert">
