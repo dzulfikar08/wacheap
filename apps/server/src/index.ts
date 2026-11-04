@@ -83,7 +83,7 @@ app.get("/", (c) => {
 // CORS to WebSocket handshakes and the session cookie is SameSite=None, so the Origin check is what keeps another
 // site from opening a socket with the agent's cookie.
 app.get("/api/inbox/ws", async (c) => {
-  if (c.req.header("Origin") !== ENV.CORS_ORIGIN) return c.text("Forbidden", 403);
+  if (c.req.header("Origin") !== new URL(ENV.CORS_ORIGIN).origin) return c.text("Forbidden", 403);
   const session = await (await createAuth()).api.getSession({ headers: c.req.raw.headers });
   if (!session) return c.text("Unauthorized", 401);
   return ENV.INBOX.getByName(`user:${session.user.id}`).fetch(c.req.raw);

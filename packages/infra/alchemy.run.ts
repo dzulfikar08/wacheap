@@ -19,9 +19,9 @@ export const broadcastDeadLetters = Cloudflare.Queues.Queue("broadcast-dlq");
 export const server = Cloudflare.Worker("server", {
   main: "../../apps/server/src/index.ts",
   compatibility: {
-    // Pinned so an Alchemy upgrade doesn't silently change runtime behaviour.
+    // Pinned so an Alchemy upgrade doesn't silently change runtime behaviour. nodejs_compat is on by default from
+    // 2026-08-04, and Cloudflare rejects naming it again after that date.
     date: "2026-08-31",
-    flags: ["nodejs_compat"],
   },
   env: {
     DB: db,

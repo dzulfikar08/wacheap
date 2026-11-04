@@ -24,7 +24,7 @@ export class InboxRoom extends DurableObject {
         socket.send(payload);
         delivered++;
       } catch {
-        // The socket closed between getWebSockets() and send(); the close handler cleans it up.
+        // The socket closed between getWebSockets() and send(); the runtime drops it from getWebSockets().
       }
     }
     return delivered;
