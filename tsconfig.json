@@ -1,0 +1,3 @@
+{
+  "extends": "@wab/config/tsconfig.base.json"
+}

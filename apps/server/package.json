@@ -1,0 +1,31 @@
+{
+  "name": "server",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc -b ../../packages/api && tsdown",
+    "check-types": "tsc -b ../../packages/api && tsc --noEmit",
+    "compile": "bun build --compile --no-compile-autoload-dotenv --minify --sourcemap --bytecode ./src/index.ts --outfile server",
+    "env:generate": "varlock codegen"
+  },
+  "dependencies": {
+    "@orpc/openapi": "catalog:",
+    "@orpc/server": "catalog:",
+    "@orpc/zod": "catalog:",
+    "@wab/api": "workspace:*",
+    "@wab/auth": "workspace:*",
+    "@wab/db": "workspace:*",
+    "better-auth": "catalog:",
+    "hono": "^4.13.7",
+    "varlock": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "catalog:",
+    "@types/node": "^26.4.1",
+    "@wab/config": "workspace:*",
+    "@wab/infra": "workspace:*",
+    "tsdown": "^0.23.0",
+    "typescript": "catalog:"
+  }
+}
