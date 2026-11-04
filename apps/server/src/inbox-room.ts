@@ -34,7 +34,6 @@ export class InboxRoom extends DurableObject {
     if (message === "ping") socket.send("pong");
   }
 
-  override async webSocketClose(socket: WebSocket, code: number, reason: string): Promise<void> {
-    socket.close(code, reason);
-  }
+  // No webSocketClose: at the pinned compatibility date the runtime answers the close frame itself, and
+  // echoing 1005/1006 (a dropped tab) back into close() throws.
 }

@@ -1,8 +1,11 @@
 # Deploys the production stage (server worker, web, D1 with migrations, queues) with Alchemy.
 #
+# Only master deploys (also restrict the "production" environment to master in the repo settings).
 # Off until the repo variable DEPLOY_ENABLED is "true", so forks and a fresh repo don't fail on missing secrets.
 # Needs, in the "production" environment:
-#   secrets: CLOUDFLARE_API_TOKEN (Workers, D1, Queues edit), ALCHEMY_PASSWORD, BETTER_AUTH_SECRET (32+ chars)
+#   secrets: CLOUDFLARE_API_TOKEN, BETTER_AUTH_SECRET (32+ chars)
+#            The token needs Account: Workers Scripts Edit, D1 Edit, Queues Edit, Secrets Store Edit (Alchemy keeps its
+#            state-store token there), and Workers Routes/Zone edit once a custom domain is added.
 #   vars:    CLOUDFLARE_ACCOUNT_ID, CORS_ORIGIN (the web origin; it must be a URL, so before the first deploy use the
 #            planned domain or a placeholder, then set the real origin and rerun)
 name: Deploy
@@ -22,7 +25,7 @@ concurrency:
 jobs:
   deploy:
     name: Deploy production
-    if: vars.DEPLOY_ENABLED == 'true'
+    if: vars.DEPLOY_ENABLED == 'true' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
@@ -30,11 +33,6 @@ jobs:
       CI: "true"
       NODE_ENV: production
       ALCHEMY_STAGE: production
-      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      ALCHEMY_PASSWORD: ${{ secrets.ALCHEMY_PASSWORD }}
-      BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
-      CORS_ORIGIN: ${{ vars.CORS_ORIGIN }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -45,6 +43,14 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - run: bun install --frozen-lockfile
       - run: bun run check-types
+      - run: bunx oxlint
+      - run: bun test packages/api/src
+      # Secrets only on this step, not during install scripts or checks.
       - name: Alchemy deploy
         working-directory: packages/infra
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          CORS_ORIGIN: ${{ vars.CORS_ORIGIN }}
         run: env -u npm_execpath node ./node_modules/alchemy/bin/cli.js deploy --stage production --yes --no-input

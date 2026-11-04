@@ -79,8 +79,11 @@ app.get("/", (c) => {
   return c.text("OK");
 });
 
-// Live inbox socket. Until workspaces exist (WAB-9), each signed-in user gets their own room.
+// Live inbox socket. Until workspaces exist (WAB-9), each signed-in user gets their own room. Browsers don't apply
+// CORS to WebSocket handshakes and the session cookie is SameSite=None, so the Origin check is what keeps another
+// site from opening a socket with the agent's cookie.
 app.get("/api/inbox/ws", async (c) => {
+  if (c.req.header("Origin") !== ENV.CORS_ORIGIN) return c.text("Forbidden", 403);
   const session = await (await createAuth()).api.getSession({ headers: c.req.raw.headers });
   if (!session) return c.text("Unauthorized", 401);
   return ENV.INBOX.getByName(`user:${session.user.id}`).fetch(c.req.raw);

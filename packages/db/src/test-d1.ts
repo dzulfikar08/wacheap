@@ -8,6 +8,7 @@ import { createClient, type Client, type InStatement } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 
 import type { Database } from "./index";
+import * as schema from "./schema";
 
 /** https://developers.cloudflare.com/d1/platform/limits/ — each limit applies to every statement inside a batch. */
 export const D1_LIMITS = {
@@ -131,5 +132,5 @@ export async function d1TestDb(
   options: D1TestOptions = {},
 ): Promise<{ client: Client; db: Database }> {
   const client = await d1TestClient(options);
-  return { client, db: drizzle(client) as unknown as Database };
+  return { client, db: drizzle(client, { schema }) as unknown as Database };
 }

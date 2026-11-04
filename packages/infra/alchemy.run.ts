@@ -19,6 +19,8 @@ export const broadcastDeadLetters = Cloudflare.Queues.Queue("broadcast-dlq");
 export const server = Cloudflare.Worker("server", {
   main: "../../apps/server/src/index.ts",
   compatibility: {
+    // Pinned so an Alchemy upgrade doesn't silently change runtime behaviour.
+    date: "2026-08-31",
     flags: ["nodejs_compat"],
   },
   env: {
