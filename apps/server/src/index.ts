@@ -11,6 +11,9 @@ import { logger } from "hono/logger";
 import { createContext } from "./context";
 import { ENV } from "./env.server";
 import { createAuth } from "./services";
+import { handleQueue } from "./queue";
+
+export { InboxRoom } from "./inbox-room";
 
 const app = new Hono();
 
@@ -76,4 +79,14 @@ app.get("/", (c) => {
   return c.text("OK");
 });
 
-export default app;
+// Live inbox socket. Until workspaces exist (WAB-9), each signed-in user gets their own room.
+app.get("/api/inbox/ws", async (c) => {
+  const session = await (await createAuth()).api.getSession({ headers: c.req.raw.headers });
+  if (!session) return c.text("Unauthorized", 401);
+  return ENV.INBOX.getByName(`user:${session.user.id}`).fetch(c.req.raw);
+});
+
+export default {
+  fetch: app.fetch,
+  queue: handleQueue,
+} satisfies ExportedHandler<Env>;

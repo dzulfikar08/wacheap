@@ -12,8 +12,23 @@ procedures in `packages/api` (served as RPC at `/rpc` and OpenAPI at `/api-refer
 `packages/ui`), varlock for env (`.env.schema` per package), Alchemy for deploys (`packages/infra/alchemy.run.ts`),
 oxlint + oxfmt. Library versions are pinned to joyorogo's in the root catalog; keep them in step.
 
-Planned additions, per the spec: Queues for broadcast fan-out and per-tier throttling, a Durable Object for the live
-inbox, and an MCP endpoint whose tools call the same oRPC procedures as the dashboard.
+Cloudflare pieces (declared in `packages/infra/alchemy.run.ts`):
+
+- `BROADCAST_QUEUE` (queue `broadcast`, dead letters in `broadcast-dlq`): the API enqueues `BroadcastJob`s
+  (`packages/api/src/lib/broadcast-job.ts`, at most 50 recipients each); `apps/server/src/queue.ts` consumes them.
+- `INBOX` (Durable Object `InboxRoom`, `apps/server/src/inbox-room.ts`): hibernating WebSockets at `/api/inbox/ws`;
+  `publish(event)` fans an event out to every open tab. Conversations themselves live in D1.
+- Still to come: an MCP endpoint whose tools call the same oRPC procedures as the dashboard (WAB-12).
+
+## Alchemy runs under Node
+
+`packages/infra` scripts start the CLI with `env -u npm_execpath node .../alchemy/bin/cli.js`. Under bun, alchemy
+2.0.0-beta.84/85 loads its `src/` and then spawns the Vite child with `bin/register-dev-mode.js`, which the published
+package leaves out, so the web app never starts. Keep that form (also in `deploy.yml`) until an alchemy release fixes it.
+Alchemy also refuses drizzle-kit 0.x's `meta/_journal.json` layout: `bun run db:generate` writes to
+`packages/db/src/migrations` and copies the `.sql` files to `packages/db/migrations-deploy`, which is what D1 applies.
+Commit both. The root `overrides` pins `@effect/platform-node-shared` to the installed effect version; without it
+alchemy cannot load `@effect/platform-bun`.
 
 ## Typechecking uses tsrs, not tsc
 
@@ -42,4 +57,6 @@ broadcast recipient lists are exactly that kind of query. Tests get their databa
 - `bun run dev`: Alchemy dev (server on :3000, web on :3001)
 - `bun run check-types`, `bun test packages/api/src`, `bun run check` (oxlint + oxfmt)
 - `bun run db:generate`: drizzle migration from `packages/db/src/schema`
-- `bun run deploy`: Alchemy deploy (D1 migrations are applied on deploy)
+- `bun run deploy`: Alchemy deploy to your personal stage (D1 migrations are applied on deploy). Production deploys
+  run from `.github/workflows/deploy.yml` on push to master once the repo variable `DEPLOY_ENABLED` is `true`; the
+  secrets it needs are listed at the top of that file.

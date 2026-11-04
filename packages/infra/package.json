@@ -4,9 +4,9 @@
   "type": "module",
   "scripts": {
     "check-types": "tsrs --noEmit",
-    "dev": "alchemy dev",
-    "deploy": "alchemy deploy",
-    "destroy": "alchemy destroy"
+    "dev": "env -u npm_execpath node ./node_modules/alchemy/bin/cli.js dev",
+    "deploy": "env -u npm_execpath node ./node_modules/alchemy/bin/cli.js deploy",
+    "destroy": "env -u npm_execpath node ./node_modules/alchemy/bin/cli.js destroy"
   },
   "dependencies": {
     "zod": "catalog:"
