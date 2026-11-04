@@ -1,3 +1,4 @@
+import { type BillingConfig, billingConfigFromEnv } from "@wacheap/api/lib/billing/config";
 import { createAuth as createConfiguredAuth } from "@wacheap/auth";
 import { type Database, createDb } from "@wacheap/db";
 
@@ -19,4 +20,9 @@ export function verifyWaitlistToken(token: string, ip?: string): Promise<boolean
     ip,
     expect: { hostname: new URL(ENV.CORS_ORIGIN).hostname, action: "waitlist" },
   });
+}
+
+/** Billing as configured on this worker: off unless WACHEAP_CLOUD=true; DOKU only when both keys are set. */
+export function billingConfig(): BillingConfig {
+  return billingConfigFromEnv(ENV);
 }

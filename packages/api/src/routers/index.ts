@@ -1,6 +1,7 @@
 import type { RouterClient } from "@orpc/server";
 
 import { protectedProcedure, publicProcedure } from "../index";
+import { billingRouter } from "./billing";
 import { waitlistRouter } from "./waitlist";
 
 export const appRouter = {
@@ -8,6 +9,7 @@ export const appRouter = {
     return "OK";
   }),
   waitlist: waitlistRouter,
+  billing: billingRouter,
   privateData: protectedProcedure.handler(({ context }) => {
     return {
       message: "This is private",

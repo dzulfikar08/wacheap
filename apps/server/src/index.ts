@@ -3,6 +3,8 @@ import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { onError, ORPCError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
+import { WEBHOOK_TARGET } from "@wacheap/api/lib/billing/doku";
+import { handleDokuNotification } from "@wacheap/api/lib/billing/store";
 import { appRouter } from "@wacheap/api/routers/index";
 import { Hono, type Context, type Next } from "hono";
 import { cors } from "hono/cors";
@@ -10,7 +12,7 @@ import { logger } from "hono/logger";
 
 import { createContext } from "./context";
 import { ENV } from "./env.server";
-import { createAuth } from "./services";
+import { billingConfig, createAuth, getDb } from "./services";
 import { handleQueue } from "./queue";
 
 export { InboxRoom } from "./inbox-room";
@@ -29,6 +31,22 @@ app.use(
 );
 
 app.on(["POST", "GET"], "/api/auth/*", async (c) => (await createAuth()).handler(c.req.raw));
+
+// DOKU payment notification: a server-to-server POST with no Origin and no session. It is registered ahead of the
+// oRPC catch-all and outside the waitlist rate limit; CORS only adds response headers. Trust comes from the
+// signature alone (bad signature = 401), and a replay extends paid time once. Live whenever the DOKU keys are set,
+// so orders paid just before billing was switched off still settle.
+app.post(WEBHOOK_TARGET, async (c) => {
+  const result = await handleDokuNotification({
+    db: getDb(),
+    doku: billingConfig().doku,
+    headers: c.req.raw.headers,
+    body: await c.req.text(),
+  });
+  if (result.status !== 200)
+    console.warn(`billing webhook: ${result.status} ${String(result.body.error)}`);
+  return c.json(result.body, result.status);
+});
 
 export const apiHandler = new OpenAPIHandler(appRouter, {
   plugins: [

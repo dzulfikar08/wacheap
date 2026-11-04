@@ -45,6 +45,15 @@ export const server = Cloudflare.Worker("server", {
     BETTER_AUTH_SECRET: Config.Redacted("BETTER_AUTH_SECRET"),
     TURNSTILE_SECRET_KEY: Config.Redacted("TURNSTILE_SECRET_KEY"),
     BETTER_AUTH_URL: Cloudflare.Worker.URL,
+    // WACheap Cloud billing: always on in production, opt-in (WACHEAP_CLOUD=true) on other stages, and off on every
+    // self-hosted install. Without the DOKU keys the deploy still succeeds and checkout answers with a clear error.
+    WACHEAP_CLOUD: production
+      ? "true"
+      : Config.String("WACHEAP_CLOUD").pipe(Config.withDefault("false")),
+    DOKU_CLIENT_ID: Config.String("DOKU_CLIENT_ID").pipe(Config.withDefault("")),
+    DOKU_SECRET_KEY: Config.Redacted("DOKU_SECRET_KEY").pipe(Config.withDefault("")),
+    // Empty = DOKU production; https://api-sandbox.doku.com for the sandbox.
+    DOKU_BASE_URL: Config.String("DOKU_BASE_URL").pipe(Config.withDefault("")),
   },
   dev: {
     port: 3000,
