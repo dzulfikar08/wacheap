@@ -43,6 +43,7 @@ export const server = Cloudflare.Worker("server", {
     }),
     CORS_ORIGIN: Config.String("CORS_ORIGIN"),
     BETTER_AUTH_SECRET: Config.Redacted("BETTER_AUTH_SECRET"),
+    TURNSTILE_SECRET_KEY: Config.Redacted("TURNSTILE_SECRET_KEY"),
     BETTER_AUTH_URL: Cloudflare.Worker.URL,
   },
   dev: {
@@ -77,6 +78,10 @@ export default Alchemy.Stack(
       },
       env: {
         VITE_SERVER_URL: serverWorker.url.as<string>(),
+        // Public site keys: the "wacheap-waitlist" widget in production, Cloudflare's always-pass test key elsewhere.
+        VITE_TURNSTILE_SITE_KEY: production
+          ? "0x4AAAAAAFzjCkTHRoTeA5Kr"
+          : "1x00000000000000000000AA",
       },
       dev: {
         port: 3001,

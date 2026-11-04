@@ -1,4 +1,5 @@
 import { waitlist } from "@wacheap/db/schema/waitlist";
+import { ORPCError } from "@orpc/server";
 import { z } from "zod";
 
 import { publicProcedure } from "../index";
@@ -30,10 +31,17 @@ export const joinWaitlistInput = z.object({
     }),
   shop: z.string().trim().max(120).optional(),
   channel: z.enum(["marketplace", "instagram", "tiktok", "website", "other"]).optional(),
+  /** Cloudflare Turnstile token from the form; checked before anything is written. */
+  turnstileToken: z.string().min(1).max(2048),
 });
 
 export const waitlistRouter = {
   join: publicProcedure.input(joinWaitlistInput).handler(async ({ input, context }) => {
+    if (!(await context.verifyHuman(input.turnstileToken))) {
+      throw new ORPCError("FORBIDDEN", {
+        message: "Verifikasi gagal. Muat ulang halaman, lalu coba lagi.",
+      });
+    }
     await context.db
       .insert(waitlist)
       .values({

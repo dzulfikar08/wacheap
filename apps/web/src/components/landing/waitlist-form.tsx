@@ -3,6 +3,8 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import { orpc } from "@/utils/orpc";
 
+import { Turnstile } from "./turnstile";
+
 const CHANNELS = [
   ["", "Pilih (opsional)"],
   ["marketplace", "Shopee, Tokopedia, atau marketplace lain"],
@@ -26,6 +28,9 @@ const FIELD_MESSAGES: Record<Field, string> = {
 /** What went wrong, in words the visitor can act on, and which fields to mark. */
 function describe(error: unknown): Problem {
   const e = error as { status?: number; data?: { issues?: { path?: unknown[] }[] } } | null;
+  if (e?.status === 403) {
+    return { fields: [], message: "Verifikasi gagal. Muat ulang halaman, lalu coba lagi." };
+  }
   if (e?.status === 429) {
     return { fields: [], message: "Terlalu banyak percobaan. Tunggu satu menit, lalu coba lagi." };
   }
@@ -54,7 +59,15 @@ export function WaitlistForm() {
   const [whatsapp, setWhatsapp] = useState("");
   const [shop, setShop] = useState("");
   const [channel, setChannel] = useState<Channel | "">("");
-  const join = useMutation(orpc.waitlist.join.mutationOptions());
+  const [token, setToken] = useState<string | null>(null);
+  const [resetKey, setResetKey] = useState(0);
+  const [checkFailed, setCheckFailed] = useState(false);
+  // A Turnstile token is valid once, so every failed attempt gets a fresh one.
+  const join = useMutation({
+    ...orpc.waitlist.join.mutationOptions(),
+    onError: () => setResetKey((k) => k + 1),
+  });
+  const waiting = !token && !join.isPending;
   const done = useRef<HTMLParagraphElement>(null);
   const problem = join.isError ? describe(join.error) : null;
   const errorId = `${id}-error`;
@@ -81,7 +94,9 @@ export function WaitlistForm() {
       className="wc-form"
       onSubmit={(e) => {
         e.preventDefault();
+        if (!token) return;
         join.mutate({
+          turnstileToken: token,
           email,
           whatsapp: whatsapp || undefined,
           shop: shop || undefined,
@@ -140,9 +155,23 @@ export function WaitlistForm() {
           ))}
         </select>
       </div>
-      <button className="wc-button" type="submit" disabled={join.isPending}>
-        {join.isPending ? "Mendaftarkan…" : "Daftar akses awal"}
+      <Turnstile
+        onToken={(t) => {
+          setToken(t);
+          if (t) setCheckFailed(false);
+        }}
+        onFail={() => setCheckFailed(true)}
+        resetKey={resetKey}
+      />
+      <button className="wc-button" type="submit" disabled={join.isPending || !token}>
+        {join.isPending ? "Mendaftarkan…" : waiting ? "Memeriksa browser…" : "Daftar akses awal"}
       </button>
+      {checkFailed && !problem ? (
+        <p className="wc-form-error" role="alert">
+          Pemeriksaan browser tidak bisa dimuat. Matikan pemblokir iklan untuk halaman ini atau
+          periksa koneksi, lalu muat ulang.
+        </p>
+      ) : null}
       {problem ? (
         <p className="wc-form-error" id={errorId} role="alert">
           {problem.message}

@@ -5,6 +5,8 @@ import { d1TestDb } from "@wacheap/db/test-d1";
 
 import { normaliseWhatsapp, waitlistRouter } from "./waitlist";
 
+const human = async (token: string) => token === "ok";
+
 describe("normaliseWhatsapp", () => {
   test("accepts the usual Indonesian forms", () => {
     for (const n of [
@@ -27,13 +29,22 @@ describe("normaliseWhatsapp", () => {
 describe("waitlist.join", () => {
   test("stores one row per email, case-insensitively, and answers the same for a repeat", async () => {
     const { db, client } = await d1TestDb();
-    const context = { db, session: null };
+    const context = { db, session: null, verifyHuman: human };
     const first = await call(
       waitlistRouter.join,
-      { email: "Toko@Example.test", whatsapp: "0812 3456 7890", channel: "marketplace" },
+      {
+        turnstileToken: "ok",
+        email: "Toko@Example.test",
+        whatsapp: "0812 3456 7890",
+        channel: "marketplace",
+      },
       { context },
     );
-    const again = await call(waitlistRouter.join, { email: "toko@example.test" }, { context });
+    const again = await call(
+      waitlistRouter.join,
+      { turnstileToken: "ok", email: "toko@example.test" },
+      { context },
+    );
     expect(first).toEqual({ joined: true });
     expect(again).toEqual({ joined: true });
     const rows = await client.execute("select email, whatsapp, channel from waitlist");
@@ -49,8 +60,8 @@ describe("waitlist.join", () => {
     const { db, client } = await d1TestDb();
     await call(
       waitlistRouter.join,
-      { email: "  Seller@Example.TEST " },
-      { context: { db, session: null } },
+      { turnstileToken: "ok", email: "  Seller@Example.TEST " },
+      { context: { db, session: null, verifyHuman: human } },
     );
     const rows = await client.execute("select email, whatsapp from waitlist");
     expect(rows.rows[0]).toMatchObject({ email: "seller@example.test", whatsapp: null });
@@ -61,9 +72,31 @@ describe("waitlist.join", () => {
     await expect(
       call(
         waitlistRouter.join,
-        { email: "a@b.test", whatsapp: "123" },
-        { context: { db, session: null } },
+        { turnstileToken: "ok", email: "a@b.test", whatsapp: "123" },
+        { context: { db, session: null, verifyHuman: human } },
       ),
+    ).rejects.toThrow();
+  });
+});
+
+describe("waitlist.join, Turnstile", () => {
+  test("a failed check writes nothing", async () => {
+    const { db, client } = await d1TestDb();
+    await expect(
+      call(
+        waitlistRouter.join,
+        { turnstileToken: "bot", email: "bot@example.test" },
+        { context: { db, session: null, verifyHuman: human } },
+      ),
+    ).rejects.toThrow(/Verifikasi gagal/);
+    expect((await client.execute("select count(*) as n from waitlist")).rows[0]!.n).toBe(0);
+  });
+  test("a missing token is a validation error", async () => {
+    const { db } = await d1TestDb();
+    await expect(
+      call(waitlistRouter.join, { email: "a@example.test" } as never, {
+        context: { db, session: null, verifyHuman: human },
+      }),
     ).rejects.toThrow();
   });
 });

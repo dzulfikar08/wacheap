@@ -538,3 +538,10 @@
   font-weight: 600;
   text-underline-offset: 0.2em;
 }
+
+.wc-turnstile {
+  grid-column: 1 / -1;
+}
+.wc-turnstile:empty {
+  display: none;
+}

@@ -1,7 +1,7 @@
 import type { Context as ApiContext } from "@wacheap/api/context";
 import type { Context as HonoContext } from "hono";
 
-import { getDb } from "./services";
+import { getDb, verifyTurnstile } from "./services";
 import { createAuth } from "./services";
 
 export type CreateContextOptions = {
@@ -15,9 +15,11 @@ export async function createContext({ context }: CreateContextOptions): Promise<
   ).api.getSession({
     headers: context.req.raw.headers,
   });
+  const ip = context.req.header("CF-Connecting-IP");
   return {
     db,
     session,
+    verifyHuman: (token: string) => verifyTurnstile(token, ip),
   };
 }
 

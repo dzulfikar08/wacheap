@@ -3,7 +3,7 @@
 # Only master deploys (also restrict the "production" environment to master in the repo settings).
 # Off until the repo variable DEPLOY_ENABLED is "true", so forks and a fresh repo don't fail on missing secrets.
 # Needs, in the "production" environment:
-#   secrets: CLOUDFLARE_API_TOKEN, BETTER_AUTH_SECRET (32+ chars)
+#   secrets: CLOUDFLARE_API_TOKEN, BETTER_AUTH_SECRET (32+ chars), TURNSTILE_SECRET_KEY (widget "wacheap-waitlist")
 #            The token needs Account: Workers Scripts Edit, D1 Edit, Queues Edit, Secrets Store Edit (Alchemy keeps its
 #            state-store token there), and Workers Routes/Zone edit once a custom domain is added.
 #   vars:    CLOUDFLARE_ACCOUNT_ID, CORS_ORIGIN (the web origin; it must be a URL, so before the first deploy use the
@@ -52,5 +52,6 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
           CORS_ORIGIN: ${{ vars.CORS_ORIGIN }}
         run: env -u npm_execpath node ./node_modules/alchemy/bin/cli.js deploy --stage production --yes --no-input
