@@ -91,12 +91,15 @@ describe("waitlist.join, Turnstile", () => {
     ).rejects.toThrow(/Verifikasi gagal/);
     expect((await client.execute("select count(*) as n from waitlist")).rows[0]!.n).toBe(0);
   });
-  test("a missing token is a validation error", async () => {
+  test("a missing token is a validation error, not a failed check", async () => {
     const { db } = await d1TestDb();
+    let checked = false;
+    const spy = async () => ((checked = true), true);
     await expect(
       call(waitlistRouter.join, { email: "a@example.test" } as never, {
-        context: { db, session: null, verifyHuman: human },
+        context: { db, session: null, verifyHuman: spy },
       }),
-    ).rejects.toThrow();
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(checked).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
 import type { Context as ApiContext } from "@wacheap/api/context";
 import type { Context as HonoContext } from "hono";
 
-import { getDb, verifyTurnstile } from "./services";
+import { getDb, verifyWaitlistToken } from "./services";
 import { createAuth } from "./services";
 
 export type CreateContextOptions = {
@@ -19,7 +19,7 @@ export async function createContext({ context }: CreateContextOptions): Promise<
   return {
     db,
     session,
-    verifyHuman: (token: string) => verifyTurnstile(token, ip),
+    verifyHuman: (token: string) => verifyWaitlistToken(token, ip),
   };
 }
 

@@ -44,8 +44,11 @@ export function Turnstile({
   resetKey,
 }: {
   onToken: (token: string | null) => void;
-  /** The check couldn't run (script blocked, network, Cloudflare error). */
-  onFail: () => void;
+  /**
+   * The check couldn't finish: "load" (script blocked or offline), "unsupported" (browser), or "challenge" (Cloudflare
+   * refused this attempt; a retry may pass).
+   */
+  onFail: (reason: "load" | "unsupported" | "challenge") => void;
   /** Cloudflare wants the visitor to tick the box before it issues a token. */
   onInteractive?: () => void;
   resetKey: number;
@@ -74,13 +77,17 @@ export function Turnstile({
           "before-interactive-callback": () => interactive.current?.(),
           "error-callback": () => {
             callback.current(null);
-            fail.current();
+            fail.current("challenge");
+          },
+          "unsupported-callback": () => {
+            callback.current(null);
+            fail.current("unsupported");
           },
         });
       })
       .catch(() => {
         callback.current(null);
-        fail.current();
+        fail.current("load");
       });
     return () => {
       cancelled = true;

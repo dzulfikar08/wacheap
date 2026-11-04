@@ -44,7 +44,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run check-types
       - run: bunx oxlint
-      - run: bun test packages/api/src apps/web/src
+      - run: bun test packages/api/src apps/web/src apps/server/src
       # Secrets only on this step, not during install scripts or checks.
       - name: Alchemy deploy
         working-directory: packages/infra

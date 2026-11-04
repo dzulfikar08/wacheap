@@ -53,6 +53,13 @@ function describe(error: unknown): Problem {
   };
 }
 
+const CHECK_FAILED = {
+  load: "Pemeriksaan browser tidak bisa dimuat. Matikan pemblokir iklan untuk halaman ini atau periksa koneksi, lalu muat ulang.",
+  unsupported:
+    "Browser ini tidak didukung pemeriksaan keamanan. Coba browser lain, misalnya Chrome atau Firefox versi terbaru.",
+  challenge: "Pemeriksaan keamanan belum lolos. Muat ulang halaman, lalu coba lagi.",
+} as const;
+
 export function WaitlistForm() {
   const id = useId();
   const [email, setEmail] = useState("");
@@ -61,7 +68,7 @@ export function WaitlistForm() {
   const [channel, setChannel] = useState<Channel | "">("");
   const [token, setToken] = useState<string | null>(null);
   const [resetKey, setResetKey] = useState(0);
-  const [checkFailed, setCheckFailed] = useState(false);
+  const [checkFailed, setCheckFailed] = useState<"load" | "unsupported" | "challenge" | null>(null);
   const [needsTick, setNeedsTick] = useState(false);
   // A Turnstile token is valid once, so every failed attempt gets a fresh one.
   const join = useMutation({
@@ -160,11 +167,11 @@ export function WaitlistForm() {
         onToken={(t) => {
           setToken(t);
           if (t) {
-            setCheckFailed(false);
+            setCheckFailed(null);
             setNeedsTick(false);
           }
         }}
-        onFail={() => setCheckFailed(true)}
+        onFail={setCheckFailed}
         onInteractive={() => setNeedsTick(true)}
         resetKey={resetKey}
       />
@@ -179,8 +186,7 @@ export function WaitlistForm() {
       </button>
       {checkFailed && !problem ? (
         <p className="wc-form-error" role="alert">
-          Pemeriksaan browser tidak bisa dimuat. Matikan pemblokir iklan untuk halaman ini atau
-          periksa koneksi, lalu muat ulang.
+          {CHECK_FAILED[checkFailed]}
         </p>
       ) : null}
       {problem ? (

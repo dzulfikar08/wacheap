@@ -112,6 +112,11 @@ function Privasi() {
         <h2>Pihak lain yang memproses data</h2>
         <ul>
           <li>Cloudflare, Inc.: server, basis data, dan log tempat WACheap Cloud berjalan.</li>
+          <li>
+            Cloudflare Turnstile: pemeriksaan anti-bot di formulir akses awal. Turnstile membaca
+            sinyal browser, dan server kami mengirim alamat IP-mu ke Cloudflare untuk memverifikasi
+            hasilnya.
+          </li>
           <li>Meta Platforms, Inc.: WhatsApp Cloud API, yang mengirim dan menerima pesanmu.</li>
           <li>Penyedia pembayaran (DOKU atau Pakasir) saat kamu membayar WACheap Cloud.</li>
         </ul>
