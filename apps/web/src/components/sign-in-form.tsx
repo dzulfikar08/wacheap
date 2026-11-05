@@ -8,6 +8,7 @@ import z from "zod";
 
 import { authErrorMessage } from "@/lib/auth-errors";
 import { authClient } from "@/lib/auth-client";
+import { queryClient } from "@/utils/orpc";
 
 import { FieldErrors } from "./field-errors";
 import Loader from "./loader";
@@ -31,6 +32,8 @@ export default function SignInForm() {
         },
         {
           onSuccess: () => {
+            // Whoever was signed in before must not linger in the shell or in cached data.
+            queryClient.clear();
             navigate({
               to: "/dashboard",
             });

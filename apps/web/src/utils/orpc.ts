@@ -9,8 +9,18 @@ import { ENV } from "../env.public";
 
 export function createQueryClient() {
   return new QueryClient({
+    // Revisiting a page within 30 s shows what was loaded instead of refetching first.
+    defaultOptions: { queries: { staleTime: 30_000 } },
     queryCache: new QueryCache({
       onError: (error, query) => {
+        // Background checks (the cached session) fail quietly; the next navigation tries again.
+        if (query.meta?.silent) return;
+        // The API no longer accepts the session (expired, revoked, signed out elsewhere): start over at sign-in.
+        if ((error as { status?: number }).status === 401) {
+          queryClient.clear();
+          window.location.assign("/login");
+          return;
+        }
         toast.error(`Error: ${error.message}`, {
           action: {
             label: "retry",
