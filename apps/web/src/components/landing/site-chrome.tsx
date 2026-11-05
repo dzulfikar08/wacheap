@@ -28,6 +28,22 @@ export function Logo() {
   );
 }
 
+/** The small arrow after a call to action; it nudges right on hover. */
+export function Arrow() {
+  return (
+    <svg className="wc-arrow" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M5 12h14M13 6l6 6-6 6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function SiteChrome({ children }: { children: ReactNode }) {
   return (
     <div className="wc">
@@ -64,6 +80,13 @@ export function SiteChrome({ children }: { children: ReactNode }) {
             <p className="wc-footer-small">
               Contoh biaya memakai tarif Meta Indonesia per pesan, ditambah PPN 11%.
             </p>
+            <a className="wc-by" href="https://joyodigitama.com">
+              <span className="wc-by-mark" aria-hidden="true">
+                JD
+              </span>
+              Oleh <strong>JoyoDigitama</strong>
+              <span aria-hidden="true">↗</span>
+            </a>
           </div>
           <div>
             <p className="wc-footer-head">Produk</p>

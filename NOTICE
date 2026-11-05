@@ -16,6 +16,16 @@ Trademarks
   to identify the WhatsApp Business Platform (Cloud API) this software talks
   to; this project is not sponsored or endorsed by Meta.
 
+Brand marks
+  The logos in apps/web/public/logos belong to their owners: ChatGPT and Codex
+  (OpenAI), Claude (Anthropic), Cursor (Anysphere), Grok (xAI) and Google
+  Sheets (Google). They are used only to name products WACheap plans to work
+  with, or that a seller may keep a buyer list in. Their use does not mean any
+  of these companies sponsors, endorses or works with WACheap, and they are not
+  covered by the AGPL. Sources: the AI marks from @lobehub/icons-static-svg
+  (MIT package of the vendors' marks) and Google Sheets from simple-icons (CC0
+  package of the vendors' marks).
+
 Design credit
   The public landing page follows the structure and visual language of
   mailcheap.ai, by Marc Lou (open-source newsletter app, AGPL-3.0,
