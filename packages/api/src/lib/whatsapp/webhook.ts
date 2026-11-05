@@ -188,6 +188,8 @@ export interface HandleOptions {
   /** Only numbers owned by this user may be touched (a per-number endpoint). Unset: the server's own app. */
   userId?: string;
   newId?: () => string;
+  /** Stamped on each number a change reached (its card shows the webhook as working). */
+  now?: Date;
 }
 
 export async function handleWebhook(
@@ -207,7 +209,14 @@ export async function handleWebhook(
           result.skipped++;
           continue;
         }
-        await handleMessages(db, value.data, options.userId, newId, result);
+        await handleMessages(
+          db,
+          value.data,
+          options.userId,
+          newId,
+          result,
+          options.now ?? new Date(),
+        );
       } else if (change.field === "phone_number_quality_update") {
         const value = qualityValueSchema.safeParse(change.value);
         if (!value.success) {
@@ -254,6 +263,7 @@ async function handleMessages(
   userId: string | undefined,
   newId: () => string,
   result: WebhookResult,
+  now: Date,
 ): Promise<void> {
   const phoneNumberId = value.metadata.phone_number_id;
   const number = (
@@ -271,6 +281,7 @@ async function handleMessages(
     result.unknownNumbers.push(phoneNumberId);
     return;
   }
+  await db.update(waNumber).set({ lastWebhookAt: now }).where(eq(waNumber.id, number.id));
   const names = new Map<string, string>();
   for (const c of value.contacts ?? [])
     if (c.wa_id && c.profile?.name) names.set(c.wa_id, c.profile.name);
@@ -402,7 +413,6 @@ export async function receiveWebhook(args: {
   const { db, endpoint, body, signature } = args;
   let appSecret: string;
   let userId: string | undefined;
-  let numberId: string | undefined;
   if (endpoint.kind === "app") {
     appSecret = endpoint.appSecret;
   } else {
@@ -429,15 +439,8 @@ export async function receiveWebhook(args: {
       return { status: 401 };
     }
     userId = row.userId;
-    numberId = row.id;
   }
   if (!(await verifySignature(appSecret, body, signature))) return { status: 401 };
-
-  if (numberId)
-    await db
-      .update(waNumber)
-      .set({ lastWebhookAt: args.now ?? new Date() })
-      .where(eq(waNumber.id, numberId));
 
   let payload: unknown;
   try {
@@ -448,7 +451,7 @@ export async function receiveWebhook(args: {
   const parsed = webhookPayloadSchema.safeParse(payload);
   if (!parsed.success)
     return { status: 200, result: { events: [], unknownNumbers: [], skipped: 1 } };
-  return { status: 200, result: await handleWebhook(db, parsed.data, { userId }) };
+  return { status: 200, result: await handleWebhook(db, parsed.data, { userId, now: args.now }) };
 }
 
 /**

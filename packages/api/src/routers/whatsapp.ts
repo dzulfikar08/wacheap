@@ -1,6 +1,6 @@
 import { ORPCError } from "@orpc/server";
 import { waNumber } from "@wacheap/db/schema/whatsapp";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 
 import type { Context } from "../context";
@@ -8,10 +8,13 @@ import { protectedProcedure } from "../index";
 import {
   GraphError,
   clearNumberWebhook,
+  exchangeSignupCode,
   getPhoneNumber,
+  registerPhone,
   listWabaNumbers,
   setNumberWebhook,
   subscribeApp,
+  unsubscribeApp,
   type GraphCreds,
   type PhoneNumberInfo,
 } from "../lib/whatsapp/graph";
@@ -37,6 +40,7 @@ export const connectInput = z.object({
 /** Associated data for each sealed value: a sealed token can't be passed off as an app secret, or moved to another number. */
 const tokenContext = (phoneNumberId: string) => phoneNumberId;
 const appSecretContext = (phoneNumberId: string) => `app:${phoneNumberId}`;
+const pinContext = (phoneNumberId: string) => `pin:${phoneNumberId}`;
 
 /** 32 random bytes, URL-safe: the per-number webhook path segment and verify token. */
 function newWebhookKey(): string {
@@ -56,6 +60,8 @@ const PUBLIC_COLUMNS = {
   verifiedName: waNumber.verifiedName,
   qualityRating: waNumber.qualityRating,
   messagingTier: waNumber.messagingTier,
+  source: waNumber.source,
+  pinSealed: waNumber.pinSealed,
   webhookKey: waNumber.webhookKey,
   lastWebhookAt: waNumber.lastWebhookAt,
   createdAt: waNumber.createdAt,
@@ -131,20 +137,28 @@ async function installWebhook(
 
 async function credsOf(
   context: Pick<Context, "whatsapp">,
-  row: { tokenSealed: string; appSecretSealed: string; phoneNumberId: string },
+  row: { tokenSealed: string; appSecretSealed: string; phoneNumberId: string; source: string },
 ): Promise<GraphCreds> {
   try {
+    // An embedded number's app is this server's: read its secret from the config, so rotating META_APP_SECRET
+    // doesn't strand the numbers connected before.
+    const serverSecret =
+      row.source === "embedded"
+        ? (context.whatsapp.embeddedSignup?.appSecret ?? context.whatsapp.webhook?.appSecret)
+        : undefined;
     return {
       token: await openToken(
         context.whatsapp.tokenSecret,
         row.tokenSealed,
         tokenContext(row.phoneNumberId),
       ),
-      appSecret: await openToken(
-        context.whatsapp.tokenSecret,
-        row.appSecretSealed,
-        appSecretContext(row.phoneNumberId),
-      ),
+      appSecret:
+        serverSecret ??
+        (await openToken(
+          context.whatsapp.tokenSecret,
+          row.appSecretSealed,
+          appSecretContext(row.phoneNumberId),
+        )),
     };
   } catch {
     throw new ORPCError("PRECONDITION_FAILED", {
@@ -152,6 +166,84 @@ async function credsOf(
         "Token nomor ini tidak bisa dibaca lagi. Hubungkan ulang nomornya dengan token baru; riwayatnya tetap ada.",
     });
   }
+}
+
+/**
+ * After `numberId` stops being an Embedded Signup number (disconnected, or reconnected manually): unsubscribe this
+ * server's app from its WABA unless another embedded number still needs it there. Best effort.
+ */
+async function releaseServerApp(
+  context: Context,
+  row: {
+    id: string;
+    wabaId: string;
+    phoneNumberId: string;
+    tokenSealed: string;
+    appSecretSealed: string;
+  },
+): Promise<void> {
+  const others = await context.db
+    .select({ id: waNumber.id })
+    .from(waNumber)
+    .where(
+      and(
+        eq(waNumber.wabaId, row.wabaId),
+        eq(waNumber.source, "embedded"),
+        ne(waNumber.id, row.id),
+      ),
+    )
+    .limit(1);
+  if (others.length > 0) return;
+  try {
+    await unsubscribeApp(
+      context.whatsapp.graph,
+      await credsOf(context, { ...row, source: "embedded" }),
+      row.wabaId,
+    );
+  } catch (error) {
+    console.warn(
+      `whatsapp: unsubscribing this server's app from ${row.wabaId} failed:`,
+      error instanceof Error ? error.message : error,
+    );
+    return;
+  }
+  // Another seller may have connected an embedded number on this WABA meanwhile: subscribe again for them.
+  const arrived = (
+    await context.db
+      .select()
+      .from(waNumber)
+      .where(
+        and(
+          eq(waNumber.wabaId, row.wabaId),
+          eq(waNumber.source, "embedded"),
+          ne(waNumber.id, row.id),
+        ),
+      )
+      .limit(1)
+  )[0];
+  if (arrived)
+    await subscribeApp(context.whatsapp.graph, await credsOf(context, arrived), row.wabaId).catch(
+      (error) =>
+        console.warn(
+          `whatsapp: resubscribing this server's app to ${row.wabaId} failed:`,
+          error instanceof Error ? error.message : error,
+        ),
+    );
+}
+
+/** Clears the override a manually connected number's own app registered (best effort; its creds may be revoked). */
+async function releaseManualOverride(
+  context: Context,
+  row: { phoneNumberId: string; tokenSealed: string; appSecretSealed: string },
+): Promise<void> {
+  const old = await credsOf(context, { ...row, source: "manual" }).catch(() => null);
+  if (!old) return;
+  await clearNumberWebhook(context.whatsapp.graph, old, row.phoneNumberId).catch((error) =>
+    console.warn(
+      `whatsapp: clearing the previous app's override for ${row.phoneNumberId} failed:`,
+      error instanceof Error ? error.message : error,
+    ),
+  );
 }
 
 async function ownNumber(context: Context, id: string) {
@@ -166,7 +258,32 @@ async function ownNumber(context: Context, id: string) {
   return row;
 }
 
+export const embeddedInput = z.object({
+  /** From FB.login's authResponse; Meta lets it live about 30 seconds. */
+  code: z.string().trim().min(10).max(2048),
+  wabaId: metaId("WhatsApp Business Account ID"),
+  phoneNumberId: metaId("Phone number ID"),
+});
+
+/** A random 6-digit two-step verification PIN for a number this server registers. */
+function newPin(): string {
+  const n = crypto.getRandomValues(new Uint32Array(1))[0]! % 1_000_000;
+  return n.toString().padStart(6, "0");
+}
+
 export const whatsappRouter = {
+  /** What the browser needs to start Embedded Signup; null when this server has no Meta app set up for it. */
+  signupConfig: protectedProcedure.handler(({ context }) => {
+    const signup = context.whatsapp.embeddedSignup;
+    return signup
+      ? {
+          appId: signup.appId,
+          configId: signup.configId,
+          graphVersion: context.whatsapp.graph.version,
+        }
+      : null;
+  }),
+
   numbers: {
     /** The user's numbers, with each one's webhook callback URL and verify token for their Meta app. */
     list: protectedProcedure.handler(async ({ context }) => {
@@ -175,8 +292,9 @@ export const whatsappRouter = {
         .from(waNumber)
         .where(eq(waNumber.userId, context.session.user.id))
         .orderBy(asc(waNumber.createdAt));
-      return rows.map(({ webhookKey, ...row }) => ({
+      return rows.map(({ webhookKey, pinSealed, ...row }) => ({
         ...row,
+        hasPin: pinSealed !== null,
         webhookUrl: webhookUrl(context, webhookKey),
         verifyToken: webhookKey,
       }));
@@ -196,6 +314,8 @@ export const whatsappRouter = {
           .select({
             id: waNumber.id,
             userId: waNumber.userId,
+            wabaId: waNumber.wabaId,
+            source: waNumber.source,
             webhookKey: waNumber.webhookKey,
             phoneNumberId: waNumber.phoneNumberId,
             tokenSealed: waNumber.tokenSealed,
@@ -231,6 +351,7 @@ export const whatsappRouter = {
 
       const sealed = {
         wabaId: input.wabaId,
+        source: "manual" as const,
         tokenSealed: await sealToken(
           whatsapp.tokenSecret,
           input.accessToken,
@@ -245,16 +366,17 @@ export const whatsappRouter = {
       };
 
       if (existing) {
-        // Moving to another Meta app: the old app's override would keep posting here, signed with a secret this URL no
-        // longer accepts. Clear it with the old credentials first (best effort; they may be revoked already).
-        const old = await credsOf(context, existing).catch(() => null);
-        if (old && old.appSecret !== input.appSecret) {
-          await clearNumberWebhook(whatsapp.graph, old, input.phoneNumberId).catch((error) =>
-            console.warn(
-              `whatsapp: clearing the previous app's override for ${input.phoneNumberId} failed:`,
-              error instanceof Error ? error.message : error,
-            ),
-          );
+        if (existing.source === "embedded") {
+          // From Embedded Signup to the seller's own app: stop this server's app from posting the same messages too.
+          // Unless the "manual" app is this server's own: then the subscription just made is the one to keep.
+          const serverSecret = whatsapp.embeddedSignup?.appSecret ?? whatsapp.webhook?.appSecret;
+          if (input.appSecret !== serverSecret) await releaseServerApp(context, existing);
+        } else {
+          // Moving to another Meta app: the old app's override would keep posting here, signed with a secret this URL
+          // no longer accepts. Clear it with the old credentials first.
+          const old = await credsOf(context, existing).catch(() => null);
+          if (old && old.appSecret !== input.appSecret)
+            await releaseManualOverride(context, existing);
         }
         // The new credentials may be another app's: "Aktif" waits for that app's first webhook.
         await db
@@ -319,6 +441,172 @@ export const whatsappRouter = {
         return { ok: true as const };
       }),
 
+    /**
+     * The one-button connect: the seller finished Meta's Embedded Signup in the browser, which handed back a code and
+     * the WABA and number they picked. The code becomes the seller's business token for this server's own app, so the
+     * number's webhooks arrive at /api/whatsapp/webhook (no per-number override). A number not yet on the Cloud API is
+     * registered with a fresh PIN.
+     */
+    connectEmbedded: protectedProcedure.input(embeddedInput).handler(async ({ input, context }) => {
+      const { db, session, whatsapp } = context;
+      const signup = whatsapp.embeddedSignup;
+      if (!signup)
+        throw new ORPCError("PRECONDITION_FAILED", {
+          message: "Koneksi lewat Facebook belum disiapkan di server ini. Pakai cara manual.",
+        });
+      const existing = (
+        await db
+          .select({
+            id: waNumber.id,
+            userId: waNumber.userId,
+            source: waNumber.source,
+            phoneNumberId: waNumber.phoneNumberId,
+            tokenSealed: waNumber.tokenSealed,
+            appSecretSealed: waNumber.appSecretSealed,
+            pinSealed: waNumber.pinSealed,
+          })
+          .from(waNumber)
+          .where(eq(waNumber.phoneNumberId, input.phoneNumberId))
+          .limit(1)
+      )[0];
+      if (existing && existing.userId !== session.user.id)
+        throw new ORPCError("CONFLICT", {
+          message: "Nomor ini sudah terhubung ke akun WACheap lain.",
+        });
+
+      let token: string;
+      try {
+        token = await exchangeSignupCode(whatsapp.graph, signup, input.code);
+      } catch (error) {
+        console.warn(
+          "whatsapp: signup code exchange failed:",
+          error instanceof Error ? error.message : error,
+        );
+        throw new ORPCError("BAD_REQUEST", {
+          message:
+            "Kode dari Facebook sudah kedaluwarsa atau tidak valid. Ulangi Hubungkan dengan Facebook.",
+        });
+      }
+      const creds: GraphCreds = { token, appSecret: signup.appSecret };
+
+      let info: PhoneNumberInfo;
+      let registered = true;
+      try {
+        const numbers = await listWabaNumbers(whatsapp.graph, creds, input.wabaId);
+        const found = numbers.find((n) => n.id === input.phoneNumberId);
+        if (!found)
+          throw new ORPCError("BAD_REQUEST", {
+            message:
+              "Nomor yang dipilih tidak ditemukan di akun WhatsApp itu. Ulangi dan pilih nomornya.",
+          });
+        info = found;
+        await subscribeApp(whatsapp.graph, creds, input.wabaId);
+      } catch (error) {
+        if (error instanceof ORPCError) throw error;
+        throw graphFailure(error);
+      }
+      // A number already on the Cloud API (registered by another tool, or earlier) keeps its registration and PIN. A
+      // number this server registered before is registered again with the PIN it set then (Meta refuses a new one).
+      let pin: string | null = null;
+      if (info.platform_type !== "CLOUD_API") {
+        const stored = existing?.pinSealed
+          ? await openToken(
+              whatsapp.tokenSecret,
+              existing.pinSealed,
+              pinContext(input.phoneNumberId),
+            ).catch(() => null)
+          : null;
+        const attempt = stored ?? newPin();
+        try {
+          await registerPhone(whatsapp.graph, creds, input.phoneNumberId, attempt);
+          pin = attempt;
+        } catch (error) {
+          registered = false;
+          console.warn(
+            `whatsapp: registering ${input.phoneNumberId} failed:`,
+            error instanceof Error ? error.message : error,
+          );
+        }
+      }
+
+      const values = {
+        wabaId: input.wabaId,
+        source: "embedded" as const,
+        // Only a PIN this server just set replaces a stored one; an already-registered number keeps what it had.
+        ...(pin
+          ? {
+              pinSealed: await sealToken(
+                whatsapp.tokenSecret,
+                pin,
+                pinContext(input.phoneNumberId),
+              ),
+            }
+          : {}),
+        tokenSealed: await sealToken(
+          whatsapp.tokenSecret,
+          token,
+          tokenContext(input.phoneNumberId),
+        ),
+        appSecretSealed: await sealToken(
+          whatsapp.tokenSecret,
+          signup.appSecret,
+          appSecretContext(input.phoneNumberId),
+        ),
+        ...details(info),
+      };
+      if (existing) {
+        if (existing.source === "manual") await releaseManualOverride(context, existing);
+        await db
+          .update(waNumber)
+          .set({ ...values, lastWebhookAt: null })
+          .where(and(eq(waNumber.id, existing.id), eq(waNumber.userId, session.user.id)));
+        return { id: existing.id, reconnected: true, registered, ...details(info) };
+      }
+      const id = crypto.randomUUID();
+      const inserted = await db
+        .insert(waNumber)
+        .values({
+          id,
+          userId: session.user.id,
+          phoneNumberId: input.phoneNumberId,
+          webhookKey: newWebhookKey(),
+          ...values,
+        })
+        .onConflictDoNothing({ target: waNumber.phoneNumberId })
+        .returning({ id: waNumber.id });
+      if (inserted.length === 0)
+        throw new ORPCError("CONFLICT", { message: "Nomor ini baru saja terhubung." });
+      return { id, reconnected: false, registered, ...details(info) };
+    }),
+
+    /**
+     * The two-step verification PIN this server set when it registered the number. The seller needs it to move the
+     * number to another provider or register it again elsewhere.
+     */
+    revealPin: protectedProcedure
+      .input(z.object({ id: z.string().min(1) }))
+      .handler(async ({ input, context }) => {
+        const row = await ownNumber(context, input.id);
+        if (!row.pinSealed)
+          throw new ORPCError("NOT_FOUND", {
+            message:
+              "WACheap tidak menyetel PIN nomor ini (sudah terdaftar sebelumnya). PIN-nya bisa diatur ulang di WhatsApp Manager.",
+          });
+        try {
+          return {
+            pin: await openToken(
+              context.whatsapp.tokenSecret,
+              row.pinSealed,
+              pinContext(row.phoneNumberId),
+            ),
+          };
+        } catch {
+          throw new ORPCError("PRECONDITION_FAILED", {
+            message: "PIN tidak bisa dibaca lagi. Atur ulang PIN-nya di WhatsApp Manager.",
+          });
+        }
+      }),
+
     /** Reads the number's name, quality rating and tier from Meta again. */
     refresh: protectedProcedure
       .input(z.object({ id: z.string().min(1) }))
@@ -337,27 +625,16 @@ export const whatsappRouter = {
       }),
 
     /**
-     * Forgets the number, its token and its message history. Contacts stay. Our webhook override on the number is
-     * removed (best effort), so Meta goes back to the seller's app's own callback URL; the app stays subscribed to the
-     * WABA, since it is theirs and may serve other tools.
+     * Forgets the number, its token and its message history. Contacts stay. A manual number's override is removed, so
+     * Meta goes back to the seller's app's own callback URL (their app stays subscribed: it is theirs). An embedded
+     * number's WABA is unsubscribed from this server's app once no other embedded number uses it. Both best effort.
      */
     disconnect: protectedProcedure
       .input(z.object({ id: z.string().min(1) }))
       .handler(async ({ input, context }) => {
         const row = await ownNumber(context, input.id);
-        try {
-          await clearNumberWebhook(
-            context.whatsapp.graph,
-            await credsOf(context, row),
-            row.phoneNumberId,
-          );
-        } catch (error) {
-          // A revoked token or unreadable secret must not keep the seller from removing the number.
-          console.warn(
-            `whatsapp: clearing webhook override for ${row.phoneNumberId} failed:`,
-            error instanceof Error ? error.message : error,
-          );
-        }
+        if (row.source === "embedded") await releaseServerApp(context, row);
+        else await releaseManualOverride(context, row);
         await context.db
           .delete(waNumber)
           .where(and(eq(waNumber.id, row.id), eq(waNumber.userId, context.session.user.id)));

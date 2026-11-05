@@ -56,6 +56,11 @@ export const server = Cloudflare.Worker("server", {
     // WhatsApp webhook at <server>/api/whatsapp/webhook. Optional: without them the webhook answers 503.
     META_APP_SECRET: Config.Redacted("META_APP_SECRET").pipe(Config.withDefault("")),
     WHATSAPP_VERIFY_TOKEN: Config.Redacted("WHATSAPP_VERIFY_TOKEN").pipe(Config.withDefault("")),
+    // Embedded Signup (one-button connect). Both public; with META_APP_SECRET, the button appears on /nomor.
+    META_APP_ID: Config.String("META_APP_ID").pipe(Config.withDefault("")),
+    WHATSAPP_SIGNUP_CONFIG_ID: Config.String("WHATSAPP_SIGNUP_CONFIG_ID").pipe(
+      Config.withDefault(""),
+    ),
   },
   dev: {
     port: 3000,

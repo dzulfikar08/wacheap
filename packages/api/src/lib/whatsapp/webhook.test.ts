@@ -424,6 +424,20 @@ describe("receiveWebhook", () => {
     expect(answer.status).toBe(404);
   });
 
+  test("the server's app endpoint stamps the number it reached", async () => {
+    const db = await setup();
+    const now = new Date("2026-11-05T06:00:00Z");
+    await receiveWebhook({
+      db,
+      endpoint: { kind: "app", appSecret: "server-app-secret" },
+      body,
+      signature: await sign("server-app-secret", body),
+      now,
+    });
+    const [n1] = await db.select().from(waNumber).where(eq(waNumber.id, "n1"));
+    expect(n1!.lastWebhookAt?.getTime()).toBe(now.getTime());
+  });
+
   test("the server's app endpoint routes by phone number id; a signed non-JSON body is acknowledged", async () => {
     const db = await setup();
     const endpoint = { kind: "app" as const, appSecret: "server-app-secret" };

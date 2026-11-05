@@ -48,14 +48,23 @@ broadcast recipient lists are exactly that kind of query. Tests get their databa
 
 ## WhatsApp numbers and webhooks
 
-- A number is connected manually (`whatsapp.numbers.connect`) with its WABA ID, phone number ID, a system-user token
-  and the secret of the token's Meta app; Embedded Signup comes later (WAB-11). Token and app secret are AES-GCM sealed
-  (`packages/api/src/lib/whatsapp/seal.ts`, key from BETTER_AUTH_SECRET). Every Graph call carries appsecret_proof.
-- Each number gets its own webhook URL, `/api/whatsapp/webhook/<webhookKey>`, registered with Meta as a phone-number
-  override on connect, and verified with that number's app secret. A request there may only touch the same user's
-  numbers. `/api/whatsapp/webhook` (META_APP_SECRET, WHATSAPP_VERIFY_TOKEN) is this server's own app and routes by
-  phone_number_id. Template and account webhooks ignore overrides: poll Graph for template status.
-- `message` is unique on (number_id, wa_message_id), never on the wamid alone: a seller signs their own webhooks.
+Two ways to connect a number (`wa_number.source`):
+
+- `embedded`: Meta's Embedded Signup v4, the "Hubungkan dengan Facebook" button (`whatsapp.numbers.connectEmbedded`,
+  `apps/web/src/lib/facebook-signup.ts`). The FB.login code becomes the seller's business token for this server's own
+  Meta app (META_APP_ID, WHATSAPP_SIGNUP_CONFIG_ID, META_APP_SECRET). A number not yet on Cloud API is registered with
+  a random PIN, stored sealed (`pin_sealed`). Webhooks arrive at `/api/whatsapp/webhook` (META_APP_SECRET,
+  WHATSAPP_VERIFY_TOKEN), routed by phone_number_id; no override. Its app secret is read from config, not the row.
+  Until App Review grants advanced access, only people with a role on the Meta app can complete the flow.
+- `manual`: WABA ID, phone number ID, a system-user token and the secret of the token's own Meta app. Each such number
+  gets `/api/whatsapp/webhook/<webhookKey>`, registered with Meta as a phone-number override and verified with that
+  number's app secret; requests there may only touch the same user's numbers. For self-hosters and developers.
+
+Switching a number between the two cleans up after the old one (clears the manual override, or unsubscribes this
+server's app from the WABA when no other embedded number needs it). Tokens, app secrets and PINs are AES-GCM sealed
+(`packages/api/src/lib/whatsapp/seal.ts`, key from BETTER_AUTH_SECRET); every Graph call carries appsecret_proof.
+Template and account webhooks ignore overrides: poll Graph for template status. `message` is unique on
+(number_id, wa_message_id), never on the wamid alone: a seller signs their own webhooks.
 
 ## Meta rules that shape the code
 

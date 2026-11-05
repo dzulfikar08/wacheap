@@ -92,13 +92,16 @@ async function call<T>(
 
 export interface PhoneNumberInfo {
   id: string;
+  /** "CLOUD_API" once the number is registered for the Cloud API. */
+  platform_type?: string;
   display_phone_number: string;
   verified_name: string;
   quality_rating?: string;
   messaging_limit_tier?: string;
 }
 
-const PHONE_FIELDS = "id,display_phone_number,verified_name,quality_rating,messaging_limit_tier";
+const PHONE_FIELDS =
+  "id,display_phone_number,verified_name,quality_rating,messaging_limit_tier,platform_type";
 
 /** The WABA's numbers. A token that can't see the WABA fails here, which is how `connect` proves ownership. */
 export async function listWabaNumbers(
@@ -162,4 +165,53 @@ export async function clearNumberWebhook(
     method: "POST",
     body: { webhook_configuration: { override_callback_uri: "" } },
   });
+}
+
+/**
+ * Embedded Signup: trades the code from FB.login (valid about 30 seconds) for the seller's business token. A
+ * server-to-server call with this server's app id and secret; the code itself proves the seller finished the flow.
+ */
+export async function exchangeSignupCode(
+  graph: GraphClient,
+  app: { appId: string; appSecret: string },
+  code: string,
+): Promise<string> {
+  const url = new URL(`${graph.base}/${graph.version}/oauth/access_token`);
+  url.searchParams.set("client_id", app.appId);
+  url.searchParams.set("client_secret", app.appSecret);
+  url.searchParams.set("code", code);
+  const response = await graph.fetch(url.toString(), { method: "GET" });
+  const json = (await response.json().catch(() => ({}))) as {
+    access_token?: string;
+    error?: { code?: number; message?: string };
+  };
+  if (!response.ok || !json.access_token)
+    throw new GraphError(
+      response.status,
+      json.error?.code,
+      json.error?.message ?? `code exchange failed (${response.status})`,
+    );
+  return json.access_token;
+}
+
+/** Registers the number for the Cloud API, setting `pin` (6 digits) as its two-step verification PIN. */
+export async function registerPhone(
+  graph: GraphClient,
+  creds: GraphCreds,
+  phoneNumberId: string,
+  pin: string,
+): Promise<void> {
+  await call(graph, creds, `${encodeURIComponent(phoneNumberId)}/register`, {
+    method: "POST",
+    body: { messaging_product: "whatsapp", pin },
+  });
+}
+
+/** Stops the token's app from receiving the WABA's webhooks. Only ever for this server's own app (Embedded Signup). */
+export async function unsubscribeApp(
+  graph: GraphClient,
+  creds: GraphCreds,
+  wabaId: string,
+): Promise<void> {
+  await call(graph, creds, `${encodeURIComponent(wabaId)}/subscribed_apps`, { method: "DELETE" });
 }

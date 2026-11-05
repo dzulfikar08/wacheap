@@ -18,6 +18,13 @@ export const waNumber = sqliteTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     wabaId: text("waba_id").notNull(),
+    /**
+     * How it was connected. "embedded": Meta's Embedded Signup with this server's own app, so its webhooks come to
+     * /api/whatsapp/webhook. "manual": IDs, token and app secret pasted in, webhooks at the number's own URL.
+     */
+    source: text("source", { enum: ["manual", "embedded"] })
+      .default("manual")
+      .notNull(),
     phoneNumberId: text("phone_number_id").notNull(),
     /** As Meta prints it, e.g. "+62 812-3456-7890". */
     displayPhone: text("display_phone").notNull(),
@@ -33,6 +40,11 @@ export const waNumber = sqliteTable(
      * seller's own app, signed with this secret, at /api/whatsapp/webhook/<webhookKey>.
      */
     appSecretSealed: text("app_secret_sealed").notNull(),
+    /**
+     * The two-step verification PIN this server set when it registered the number (Embedded Signup), sealed. Meta asks
+     * for it on any later re-registration; null when the number was already registered elsewhere.
+     */
+    pinSealed: text("pin_sealed"),
     /** Random path segment of this number's webhook URL; also the verify token typed into the seller's Meta app. */
     webhookKey: text("webhook_key").notNull(),
     /** Last signed webhook received for this number's URL: shows the seller their callback works. */

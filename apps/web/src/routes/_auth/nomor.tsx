@@ -14,10 +14,16 @@ import { Input } from "@wacheap/ui/components/input";
 import { Label } from "@wacheap/ui/components/label";
 import { Skeleton } from "@wacheap/ui/components/skeleton";
 import { ChevronDown, Copy, Phone, RefreshCw } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/page-header";
+import {
+  SignupCancelled,
+  preloadSignup,
+  runEmbeddedSignup,
+  type SignupConfig,
+} from "@/lib/facebook-signup";
 import { orpc, queryClient } from "@/utils/orpc";
 
 export const Route = createFileRoute("/_auth/nomor")({
@@ -75,7 +81,7 @@ function NomorPage() {
             </p>
           )}
         </section>
-        <ConnectForm />
+        <ConnectSection />
       </div>
     </>
   );
@@ -143,7 +149,13 @@ function NumberCard({ number }: { number: NumberRow }) {
             onClick={() => {
               if (
                 window.confirm(
-                  `Putuskan ${number.displayPhone}? Riwayat pesan nomor ini ikut terhapus dari WACheap, dan webhook-nya kembali ke Meta app-mu.`,
+                  number.source === "embedded"
+                    ? `Putuskan ${number.displayPhone}? Riwayat pesan nomor ini ikut terhapus dari WACheap.${
+                        number.hasPin
+                          ? " Catat dulu PIN verifikasi dua langkahnya (Lihat PIN): setelah diputus, WACheap tidak menyimpannya lagi."
+                          : ""
+                      }`
+                    : `Putuskan ${number.displayPhone}? Riwayat pesan nomor ini ikut terhapus dari WACheap, dan webhook-nya kembali ke Meta app-mu.`,
                 )
               )
                 disconnect.mutate({ id: number.id });
@@ -187,7 +199,126 @@ const FIELDS = [
 
 type FieldName = (typeof FIELDS)[number]["name"];
 
-function ConnectForm() {
+function ConnectSection() {
+  const signup = useQuery(orpc.whatsapp.signupConfig.queryOptions());
+  const config = signup.data ?? null;
+  return (
+    <section aria-labelledby="hubungkan">
+      <Card>
+        <CardHeader>
+          <CardTitle id="hubungkan" className="text-lg">
+            Hubungkan nomor
+          </CardTitle>
+          <CardDescription>
+            Pakai nomor WhatsApp Business Platform (Cloud API) milikmu sendiri. Menghubungkan nomor
+            yang sudah terhubung mengganti aksesnya tanpa menghapus riwayat.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-6">
+          {signup.isPending ? (
+            <Skeleton className="h-10 w-56 rounded-md" />
+          ) : config ? (
+            <FacebookConnect config={config} />
+          ) : null}
+          <details className="group" open={!signup.isPending && !config}>
+            <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-md text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+              <ChevronDown
+                aria-hidden="true"
+                className="size-4 -rotate-90 text-muted-foreground transition-transform group-open:rotate-0"
+              />
+              Cara manual (ID, token, dan app secret)
+            </summary>
+            <div className="pt-4">
+              <ManualForm />
+            </div>
+          </details>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+function FacebookConnect({ config }: { config: SignupConfig }) {
+  const [opening, setOpening] = useState(false);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    preloadSignup(config).then(
+      () => alive && setReady(true),
+      (error: unknown) =>
+        alive &&
+        toast.error(error instanceof Error ? error.message : "Tidak bisa memuat Facebook."),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [config]);
+  const connect = useMutation(
+    orpc.whatsapp.numbers.connectEmbedded.mutationOptions({
+      onSuccess: (number) => {
+        const done = number.reconnected
+          ? `Akses ${number.displayPhone} diperbarui.`
+          : `${number.displayPhone} terhubung.`;
+        if (number.registered) toast.success(done);
+        else
+          toast.warning(
+            `${done} Tapi Meta menolak mendaftarkan nomornya untuk Cloud API, biasanya karena nomor itu sudah punya PIN verifikasi dua langkah. Matikan atau reset PIN-nya di WhatsApp Manager > Phone numbers, lalu hubungkan lagi.`,
+            { duration: 15000 },
+          );
+        void queryClient.invalidateQueries({ queryKey: orpc.whatsapp.numbers.list.key() });
+      },
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+  const busy = opening || connect.isPending;
+
+  // Not async: FB.login must open its popup inside the click, or the browser blocks it.
+  const start = () => {
+    setOpening(true);
+    runEmbeddedSignup(config)
+      .then((result) => connect.mutate(result))
+      .catch((error: unknown) =>
+        toast.error(
+          error instanceof SignupCancelled ? error.message : "Gagal membuka Facebook. Coba lagi.",
+        ),
+      )
+      .finally(() => setOpening(false));
+  };
+
+  return (
+    <div className="grid justify-items-start gap-2">
+      <Button size="lg" onClick={start} disabled={busy || !ready}>
+        <FacebookMark />
+        {connect.isPending
+          ? "Menghubungkan..."
+          : opening
+            ? "Menunggu Facebook..."
+            : ready
+              ? "Hubungkan dengan Facebook"
+              : "Memuat Facebook..."}
+      </Button>
+      <p className="max-w-prose text-[13px] text-muted-foreground">
+        Masuk ke Facebook, pilih atau buat akun WhatsApp Business, lalu pilih nomornya. Selesai:
+        tanpa menyalin ID atau token.
+      </p>
+    </div>
+  );
+}
+
+function FacebookMark() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="size-4 fill-current"
+      data-icon="inline-start"
+    >
+      <path d="M24 12.07C24 5.41 18.63 0 12 0S0 5.4 0 12.07C0 18.1 4.39 23.1 10.13 24v-8.44H7.08v-3.49h3.04V9.41c0-3.02 1.8-4.7 4.54-4.7 1.31 0 2.68.24 2.68.24v2.97h-1.5c-1.5 0-1.96.93-1.96 1.89v2.26h3.32l-.53 3.5h-2.8V24C19.62 23.1 24 18.1 24 12.07" />
+    </svg>
+  );
+}
+
+function ManualForm() {
   const empty: Record<FieldName, string> = {
     wabaId: "",
     phoneNumberId: "",
@@ -219,52 +350,36 @@ function ConnectForm() {
   };
 
   return (
-    <section aria-labelledby="hubungkan">
-      <Card>
-        <CardHeader>
-          <CardTitle id="hubungkan" className="text-lg">
-            Hubungkan nomor
-          </CardTitle>
-          <CardDescription>
-            Pakai nomor dari WhatsApp Business Platform (Cloud API) milikmu sendiri. Untuk mencoba,
-            nomor tes dari Meta juga bisa. Menghubungkan nomor yang sudah ada mengganti token dan
-            app secret-nya tanpa menghapus riwayat. Koneksi satu klik lewat Facebook menyusul
-            setelah verifikasi Meta selesai.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={submit} className="grid gap-5">
-            {FIELDS.map((field) => (
-              <div key={field.name} className="grid gap-1.5">
-                <Label htmlFor={field.name}>{field.label}</Label>
-                <Input
-                  id={field.name}
-                  name={field.name}
-                  required
-                  autoComplete="off"
-                  spellCheck={false}
-                  inputMode={field.inputMode}
-                  type={
-                    field.name === "accessToken" || field.name === "appSecret" ? "password" : "text"
-                  }
-                  aria-describedby={`${field.name}-hint`}
-                  value={values[field.name]}
-                  onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}
-                />
-                <p id={`${field.name}-hint`} className="text-[13px] text-muted-foreground">
-                  {field.hint}
-                </p>
-              </div>
-            ))}
-            <div>
-              <Button type="submit" disabled={connect.isPending}>
-                {connect.isPending ? "Menghubungkan..." : "Hubungkan"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </section>
+    <form onSubmit={submit} className="grid gap-5">
+      <p className="text-[13px] text-muted-foreground">
+        Untuk self-host atau developer yang memakai Meta app sendiri. Nomor tes dari Meta juga bisa.
+      </p>
+      {FIELDS.map((field) => (
+        <div key={field.name} className="grid gap-1.5">
+          <Label htmlFor={field.name}>{field.label}</Label>
+          <Input
+            id={field.name}
+            name={field.name}
+            required
+            autoComplete="off"
+            spellCheck={false}
+            inputMode={field.inputMode}
+            type={field.name === "accessToken" || field.name === "appSecret" ? "password" : "text"}
+            aria-describedby={`${field.name}-hint`}
+            value={values[field.name]}
+            onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}
+          />
+          <p id={`${field.name}-hint`} className="text-[13px] text-muted-foreground">
+            {field.hint}
+          </p>
+        </div>
+      ))}
+      <div>
+        <Button type="submit" variant="outline" disabled={connect.isPending}>
+          {connect.isPending ? "Menghubungkan..." : "Hubungkan manual"}
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -308,11 +423,70 @@ function CopyField({ id, label, value }: { id: string; label: string; value: str
   );
 }
 
+/** Picks the webhook section by how the number was connected (two components: they use different hooks). */
+function WebhookSetup({ number }: { number: NumberRow }) {
+  return number.source === "embedded" ? (
+    <EmbeddedWebhookStatus number={number} />
+  ) : (
+    <ManualWebhookSetup number={number} />
+  );
+}
+
+/** Embedded numbers' webhooks come to this server's own app: nothing to set up, only whether one has arrived. */
+function EmbeddedWebhookStatus({ number }: { number: NumberRow }) {
+  const received = number.lastWebhookAt;
+  const [pin, setPin] = useState<string | null>(null);
+  const reveal = useMutation(
+    orpc.whatsapp.numbers.revealPin.mutationOptions({
+      onSuccess: (data) => setPin(data.pin),
+      onError: (error) => toast.error(error.message),
+    }),
+  );
+  return (
+    <div className="grid gap-3 border-t border-border px-(--card-spacing) pt-4 text-sm">
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-medium">Webhook</span>
+        {received ? (
+          <Badge variant="success">
+            Aktif, terakhir{" "}
+            {new Date(received).toLocaleString("id-ID", {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })}
+          </Badge>
+        ) : (
+          <Badge variant="secondary">Menunggu pesan pertama</Badge>
+        )}
+      </div>
+      {number.hasPin ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-muted-foreground">
+            PIN verifikasi dua langkah{" "}
+            {pin ? (
+              <span className="font-mono font-medium text-foreground tabular-nums">{pin}</span>
+            ) : null}
+          </span>
+          {pin ? null : (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={reveal.isPending}
+              onClick={() => reveal.mutate({ id: number.id })}
+            >
+              Lihat PIN
+            </Button>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /**
  * Whether Meta reaches this number's webhook. Connecting registers the URL with Meta by itself; until the first webhook
  * arrives the section stays open with a retry and the manual steps.
  */
-function WebhookSetup({ number }: { number: NumberRow }) {
+function ManualWebhookSetup({ number }: { number: NumberRow }) {
   const received = number.lastWebhookAt;
   const install = useMutation(
     orpc.whatsapp.numbers.installWebhook.mutationOptions({

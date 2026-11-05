@@ -339,3 +339,221 @@ describe("whatsapp.numbers.refresh and disconnect", () => {
     expect(await db.select().from(waNumber)).toHaveLength(0);
   });
 });
+
+describe("whatsapp.numbers.connectEmbedded", () => {
+  const SIGNUP = { appId: "900000000000001", configId: "800000000000001", appSecret: APP_SECRET };
+
+  /** The fake graph from setup(), plus the code exchange and /register; numbers report `platformType`. */
+  async function embeddedSetup(platformType?: string) {
+    const base = await setup();
+    const registers: string[] = [];
+    const unsubscribes: string[] = [];
+    const failRegister = { value: false };
+    const inner = base.whatsapp.graph.fetch;
+    const impl = (async (url: string, init: RequestInit) => {
+      const u = new URL(url);
+      if (u.pathname.endsWith("/oauth/access_token")) {
+        const ok =
+          u.searchParams.get("client_id") === SIGNUP.appId &&
+          u.searchParams.get("client_secret") === APP_SECRET &&
+          u.searchParams.get("code") === "good-code-123";
+        return ok
+          ? Response.json({ access_token: TOKEN, token_type: "bearer" })
+          : Response.json(
+              { error: { code: 100, message: "Invalid verification code" } },
+              { status: 400 },
+            );
+      }
+      if (u.pathname.endsWith(`/${PHONE_ID}/register`)) {
+        registers.push(JSON.parse(String(init.body)).pin);
+        return failRegister.value
+          ? Response.json(
+              { error: { code: 133005, message: "Two step verification PIN Mismatch" } },
+              { status: 400 },
+            )
+          : Response.json({ success: true });
+      }
+      if (u.pathname.endsWith(`/${WABA}/subscribed_apps`) && init.method === "DELETE") {
+        unsubscribes.push(u.searchParams.get("appsecret_proof") ?? "");
+        return Response.json({ success: true });
+      }
+      const response = await inner(url, init);
+      if (u.pathname.endsWith(`/${WABA}/phone_numbers`) && platformType) {
+        const json = (await response.json()) as { data: Record<string, unknown>[] };
+        return Response.json({
+          data: json.data.map((n) => ({ ...n, platform_type: platformType })),
+        });
+      }
+      return response;
+    }) as unknown as typeof fetch;
+    const whatsapp: WhatsAppConfig = {
+      ...base.whatsapp,
+      graph: graphClient(impl),
+      embeddedSignup: SIGNUP,
+    };
+    const as = (id: string) => {
+      const ctx = base.as(id);
+      return { context: { ...ctx.context, whatsapp } };
+    };
+    return { ...base, as, registers, unsubscribes, failRegister, whatsapp };
+  }
+
+  const embedded = { code: "good-code-123", wabaId: WABA, phoneNumberId: PHONE_ID };
+
+  test("signupConfig is null until the server has a Meta app for it", async () => {
+    const plain = await setup();
+    expect(await call(whatsappRouter.signupConfig, undefined, plain.as("u1"))).toBeNull();
+    const { as } = await embeddedSetup();
+    expect(await call(whatsappRouter.signupConfig, undefined, as("u1"))).toEqual({
+      appId: SIGNUP.appId,
+      configId: SIGNUP.configId,
+      graphVersion: "v26.0",
+    });
+  });
+
+  test("trades the code, registers a new number, and stores it as embedded without an override", async () => {
+    const { db, graph, as, registers, whatsapp } = await embeddedSetup();
+    const result = await call(whatsappRouter.numbers.connectEmbedded, embedded, as("u1"));
+    expect(result).toMatchObject({ reconnected: false, registered: true });
+    expect(registers).toHaveLength(1);
+    expect(registers[0]).toMatch(/^\d{6}$/);
+    const [row] = await db.select().from(waNumber);
+    expect(row!.source).toBe("embedded");
+    expect(await openToken(whatsapp.tokenSecret, row!.tokenSealed, PHONE_ID)).toBe(TOKEN);
+    expect(graph.calls.some((c) => c.url.includes("subscribed_apps"))).toBe(true);
+    expect(graph.calls.some((c) => c.method === "POST" && c.url.includes(`/${PHONE_ID}?`))).toBe(
+      false,
+    );
+  });
+
+  test("the PIN this server set is kept, sealed", async () => {
+    const { db, as, registers, whatsapp } = await embeddedSetup();
+    await call(whatsappRouter.numbers.connectEmbedded, embedded, as("u1"));
+    const [row] = await db.select().from(waNumber);
+    expect(await openToken(whatsapp.tokenSecret, row!.pinSealed!, `pin:${PHONE_ID}`)).toBe(
+      registers[0]!,
+    );
+  });
+
+  test("a refused registration still connects, reports it, and stores no PIN", async () => {
+    const { db, as, failRegister } = await embeddedSetup();
+    failRegister.value = true;
+    const result = await call(whatsappRouter.numbers.connectEmbedded, embedded, as("u1"));
+    expect(result.registered).toBe(false);
+    const [row] = await db.select().from(waNumber);
+    expect(row!.pinSealed).toBeNull();
+  });
+
+  test("a picked number missing from the account stores nothing", async () => {
+    const { db, as } = await embeddedSetup();
+    const error = await call(
+      whatsappRouter.numbers.connectEmbedded,
+      { ...embedded, phoneNumberId: "299999999999999" },
+      as("u1"),
+    ).catch((e) => e);
+    expect(error.status).toBe(400);
+    expect(await db.select().from(waNumber)).toHaveLength(0);
+  });
+
+  test("moving a manual number to Embedded Signup clears its own app's override and keeps its id", async () => {
+    const { db, graph, as } = await embeddedSetup();
+    const manual = await call(whatsappRouter.numbers.connect, input, as("u1"));
+    const result = await call(whatsappRouter.numbers.connectEmbedded, embedded, as("u1"));
+    expect(result).toMatchObject({ id: manual.id, reconnected: true });
+    const clears = graph.calls.filter(
+      (c) =>
+        c.method === "POST" &&
+        JSON.stringify(c.body) ===
+          JSON.stringify({ webhook_configuration: { override_callback_uri: "" } }),
+    );
+    expect(clears).toHaveLength(1);
+    expect((await db.select().from(waNumber))[0]!.source).toBe("embedded");
+  });
+
+  test("disconnecting the last embedded number on a WABA unsubscribes this server's app", async () => {
+    const { as, unsubscribes } = await embeddedSetup();
+    const { id } = await call(whatsappRouter.numbers.connectEmbedded, embedded, as("u1"));
+    await call(whatsappRouter.numbers.disconnect, { id }, as("u1"));
+    expect(unsubscribes).toHaveLength(1);
+  });
+
+  test("revealPin gives the owner the PIN this server set, and nobody else", async () => {
+    const { as, registers } = await embeddedSetup();
+    const { id } = await call(whatsappRouter.numbers.connectEmbedded, embedded, as("u1"));
+    expect(await call(whatsappRouter.numbers.revealPin, { id }, as("u1"))).toEqual({
+      pin: registers[0]!,
+    });
+    expect(
+      (await call(whatsappRouter.numbers.revealPin, { id }, as("u2")).catch((e) => e)).status,
+    ).toBe(404);
+    const [listed] = await call(whatsappRouter.numbers.list, undefined, as("u1"));
+    expect(listed!.hasPin).toBe(true);
+    expect(JSON.stringify(listed)).not.toContain(registers[0]!);
+  });
+
+  test("registering again reuses the PIN this server set before", async () => {
+    const { as, registers } = await embeddedSetup();
+    await call(whatsappRouter.numbers.connectEmbedded, embedded, as("u1"));
+    await call(whatsappRouter.numbers.connectEmbedded, embedded, as("u1"));
+    expect(registers).toHaveLength(2);
+    expect(registers[1]).toBe(registers[0]!);
+  });
+
+  test("moving to manual with this server's own app keeps its subscription", async () => {
+    const { as, unsubscribes } = await embeddedSetup();
+    await call(whatsappRouter.numbers.connectEmbedded, embedded, as("u1"));
+    await call(whatsappRouter.numbers.connect, input, as("u1"));
+    expect(unsubscribes).toHaveLength(0);
+  });
+
+  test("disconnecting keeps the subscription while another embedded number on the WABA needs it", async () => {
+    const { db, as, unsubscribes } = await embeddedSetup();
+    const { id } = await call(whatsappRouter.numbers.connectEmbedded, embedded, as("u1"));
+    await db.insert(waNumber).values({
+      id: "other",
+      userId: "u2",
+      wabaId: WABA,
+      source: "embedded",
+      phoneNumberId: "200000000000009",
+      displayPhone: "+1",
+      verifiedName: "x",
+      tokenSealed: "v1.a.b",
+      appSecretSealed: "v1.a.b",
+      webhookKey: "k-other",
+    });
+    await call(whatsappRouter.numbers.disconnect, { id }, as("u1"));
+    expect(unsubscribes).toHaveLength(0);
+  });
+
+  test("a number already on the Cloud API is not registered again", async () => {
+    const { as, registers } = await embeddedSetup("CLOUD_API");
+    await call(whatsappRouter.numbers.connectEmbedded, embedded, as("u1"));
+    expect(registers).toHaveLength(0);
+  });
+
+  test("an expired code stores nothing", async () => {
+    const { db, as } = await embeddedSetup();
+    const error = await call(
+      whatsappRouter.numbers.connectEmbedded,
+      { ...embedded, code: "expired-code-1" },
+      as("u1"),
+    ).catch((e) => e);
+    expect(error.status).toBe(400);
+    expect(error.message).toContain("kedaluwarsa");
+    expect(await db.select().from(waNumber)).toHaveLength(0);
+  });
+
+  test("refused when the server has no Meta app, or the number is another account's", async () => {
+    const plain = await setup();
+    expect(
+      (await call(whatsappRouter.numbers.connectEmbedded, embedded, plain.as("u1")).catch((e) => e))
+        .status,
+    ).toBe(412);
+    const { as } = await embeddedSetup();
+    await call(whatsappRouter.numbers.connectEmbedded, embedded, as("u1"));
+    expect(
+      (await call(whatsappRouter.numbers.connectEmbedded, embedded, as("u2")).catch((e) => e))
+        .status,
+    ).toBe(409);
+  });
+});

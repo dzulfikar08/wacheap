@@ -17,6 +17,8 @@
 # WhatsApp webhook (optional; without both the webhook at /api/whatsapp/webhook answers 503):
 #   secrets: META_APP_SECRET (Meta app > Settings > Basic > App secret), WHATSAPP_VERIFY_TOKEN (any random string, also
 #            typed into Meta app > WhatsApp > Configuration > Verify token)
+# Embedded Signup, the one-button connect (optional; needs META_APP_SECRET too):
+#   vars:    META_APP_ID (Meta app id), WHATSAPP_SIGNUP_CONFIG_ID (Facebook Login for Business configuration id)
 name: Deploy
 
 on:
@@ -69,4 +71,6 @@ jobs:
           DOKU_BASE_URL: ${{ vars.DOKU_BASE_URL }}
           META_APP_SECRET: ${{ secrets.META_APP_SECRET }}
           WHATSAPP_VERIFY_TOKEN: ${{ secrets.WHATSAPP_VERIFY_TOKEN }}
+          META_APP_ID: ${{ vars.META_APP_ID }}
+          WHATSAPP_SIGNUP_CONFIG_ID: ${{ vars.WHATSAPP_SIGNUP_CONFIG_ID }}
         run: env -u npm_execpath node ./node_modules/alchemy/bin/cli.js deploy --stage production --yes --no-input
