@@ -6,11 +6,13 @@ import { Label } from "@wacheap/ui/components/label";
 import { toast } from "sonner";
 import z from "zod";
 
+import { authErrorMessage } from "@/lib/auth-errors";
 import { authClient } from "@/lib/auth-client";
 
+import { FieldErrors } from "./field-errors";
 import Loader from "./loader";
 
-export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
+export default function SignInForm() {
   const navigate = useNavigate({
     from: "/",
   });
@@ -32,18 +34,18 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
             navigate({
               to: "/dashboard",
             });
-            toast.success("Sign in successful");
+            toast.success("Berhasil masuk");
           },
           onError: (error) => {
-            toast.error(error.error.message || error.error.statusText);
+            toast.error(authErrorMessage(error.error, "Gagal masuk. Coba lagi."));
           },
         },
       );
     },
     validators: {
       onSubmit: z.object({
-        email: z.email("Invalid email address"),
-        password: z.string().min(8, "Password must be at least 8 characters"),
+        email: z.email("Alamat email tidak valid"),
+        password: z.string().min(8, "Kata sandi minimal 8 karakter"),
       }),
     },
   });
@@ -53,83 +55,71 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
   }
 
   return (
-    <div className="mx-auto w-full mt-10 max-w-md p-6">
-      <h1 className="mb-6 text-center text-3xl font-bold">Welcome Back</h1>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          form.handleSubmit();
-        }}
-        className="space-y-4"
+    <form
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        form.handleSubmit();
+      }}
+      className="grid gap-4"
+    >
+      <form.Field name="email">
+        {(field) => (
+          <div className="grid gap-2">
+            <Label htmlFor={field.name}>Email</Label>
+            <Input
+              id={field.name}
+              name={field.name}
+              type="email"
+              autoComplete="email"
+              value={field.state.value}
+              aria-invalid={field.state.meta.errors.length > 0 || undefined}
+              aria-describedby={
+                field.state.meta.errors.length > 0 ? `${field.name}-error` : undefined
+              }
+              onBlur={field.handleBlur}
+              onChange={(e) => field.handleChange(e.target.value)}
+            />
+            <FieldErrors id={`${field.name}-error`} errors={field.state.meta.errors} />
+          </div>
+        )}
+      </form.Field>
+      <form.Field name="password">
+        {(field) => (
+          <div className="grid gap-2">
+            <Label htmlFor={field.name}>Kata sandi</Label>
+            <Input
+              id={field.name}
+              name={field.name}
+              type="password"
+              autoComplete="current-password"
+              value={field.state.value}
+              aria-invalid={field.state.meta.errors.length > 0 || undefined}
+              aria-describedby={
+                field.state.meta.errors.length > 0 ? `${field.name}-error` : undefined
+              }
+              onBlur={field.handleBlur}
+              onChange={(e) => field.handleChange(e.target.value)}
+            />
+            <FieldErrors id={`${field.name}-error`} errors={field.state.meta.errors} />
+          </div>
+        )}
+      </form.Field>
+      <form.Subscribe
+        selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
       >
-        <div>
-          <form.Field name="email">
-            {(field) => (
-              <div className="space-y-2">
-                <Label htmlFor={field.name}>Email</Label>
-                <Input
-                  id={field.name}
-                  name={field.name}
-                  type="email"
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                />
-                {field.state.meta.errors.map((error) => (
-                  <p key={error?.message} className="text-red-500">
-                    {error?.message}
-                  </p>
-                ))}
-              </div>
-            )}
-          </form.Field>
-        </div>
-
-        <div>
-          <form.Field name="password">
-            {(field) => (
-              <div className="space-y-2">
-                <Label htmlFor={field.name}>Password</Label>
-                <Input
-                  id={field.name}
-                  name={field.name}
-                  type="password"
-                  value={field.state.value}
-                  onBlur={field.handleBlur}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                />
-                {field.state.meta.errors.map((error) => (
-                  <p key={error?.message} className="text-red-500">
-                    {error?.message}
-                  </p>
-                ))}
-              </div>
-            )}
-          </form.Field>
-        </div>
-
-        <form.Subscribe
-          selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
-        >
-          {({ canSubmit, isSubmitting }) => (
-            <Button type="submit" className="w-full" disabled={!canSubmit || isSubmitting}>
-              {isSubmitting ? "Submitting..." : "Sign In"}
-            </Button>
-          )}
-        </form.Subscribe>
-      </form>
-
-      <div className="mt-4 text-center">
-        <Button
-          variant="link"
-          onClick={onSwitchToSignUp}
-          className="text-indigo-600 hover:text-indigo-800"
-        >
-          Need an account? Sign Up
-        </Button>
-      </div>
-    </div>
+        {({ canSubmit, isSubmitting }) => (
+          <Button
+            type="submit"
+            size="lg"
+            className="mt-2 w-full"
+            disabled={!canSubmit || isSubmitting}
+          >
+            {isSubmitting ? "Memproses…" : "Masuk"}
+          </Button>
+        )}
+      </form.Subscribe>
+    </form>
   );
 }

@@ -11,6 +11,7 @@ import {
 import { useEffect, useState } from "react";
 import { z } from "zod";
 
+import { PageHeader } from "@/components/page-header";
 import { rupiah, tanggal } from "@/lib/billing-format";
 import { orpc, queryClient } from "@/utils/orpc";
 
@@ -73,14 +74,17 @@ function ReturnPage() {
     description = "Pesanan ini tidak terbayar. Buat pembayaran baru dari halaman Langganan.";
   } else if (status === "pending" && gaveUp) {
     description =
-      "Belum ada konfirmasi dari DOKU. Jika Anda sudah membayar, muat ulang halaman ini nanti: kami menanyakan status pesanan ke DOKU setiap kali halaman ini dibuka.";
+      "Belum ada konfirmasi dari DOKU. Kalau kamu sudah membayar, muat ulang halaman ini nanti: kami menanyakan status pesanan ke DOKU setiap kali halaman ini dibuka.";
   }
 
   return (
-    <main className="mx-auto w-full max-w-xl p-4">
-      <Card>
+    <>
+      <PageHeader title="Pembayaran" />
+      <Card className="max-w-xl">
         <CardHeader>
-          <CardTitle aria-live="polite">{title}</CardTitle>
+          <CardTitle aria-live="polite" className="text-lg">
+            {title}
+          </CardTitle>
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardFooter>
@@ -89,6 +93,6 @@ function ReturnPage() {
           </Link>
         </CardFooter>
       </Card>
-    </main>
+    </>
   );
 }

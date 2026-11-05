@@ -7,26 +7,16 @@ import "./landing.css";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import { Logo } from "./logo";
+
+export { Logo };
+
 export const GITHUB = "https://github.com/dzulfikar08/wacheap";
 /** JoyoDigitama's mailbox for WACheap support, privacy and data requests. */
 export const CONTACT_EMAIL = "dzulfikar.at@joyodigitama.com";
 export const COMPANY = "PT Joyo Digitama Solusi";
 export const COMPANY_ADDRESS =
   "Vila Bukit Tidar F2 No. 009, Karangbesuki, Sukun, Kota Malang, Jawa Timur";
-
-export function Logo() {
-  return (
-    <svg className="wc-logo" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 3a9 9 0 0 0-7.8 13.5L3 21l4.6-1.2A9 9 0 1 0 12 3Z" fill="currentColor" />
-      <path
-        d="M8.5 12.2h7M8.5 9.2h7M8.5 15.2h4"
-        stroke="var(--wc-bg)"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
 
 /** The small arrow after a call to action; it nudges right on hover. */
 export function Arrow() {

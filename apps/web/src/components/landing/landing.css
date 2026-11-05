@@ -1,4 +1,4 @@
-/* WACheap public site. Scoped under .wc so the app's Tailwind theme (dark by default) never leaks in.
+/* WACheap public site. Scoped under .wc so the app's Tailwind theme never leaks in.
    Visual language after mailcheap.ai: off-white page, Newsreader display, Geist body, near-black buttons,
    faintly tinted cards with a hairline ring, white panels with a 1px shadow border, dot texture behind heroes. */
 .wc {

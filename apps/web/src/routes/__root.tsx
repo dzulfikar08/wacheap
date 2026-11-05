@@ -1,20 +1,24 @@
+import "@fontsource-variable/geist";
+import "@fontsource-variable/newsreader";
+
 import type { QueryClient } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import {
   HeadContent,
   Outlet,
   createRootRouteWithContext,
   useRouterState,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { Toaster } from "@wacheap/ui/components/sonner";
+import { Suspense, lazy } from "react";
 
-import Header from "@/components/header";
 import { isPublicPath } from "@/components/landing/public-paths";
 import { ThemeProvider } from "@/components/theme-provider";
 import type { orpc } from "@/utils/orpc";
 
 import "../index.css";
+
+// import.meta.env.DEV is false in a production build, so the bundler drops the import and both devtools with it.
+const Devtools = import.meta.env.DEV ? lazy(() => import("@/components/devtools")) : () => null;
 
 export interface RouterAppContext {
   orpc: typeof orpc;
@@ -30,7 +34,8 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
       },
       {
         name: "description",
-        content: "Official WhatsApp broadcast for online sellers. Pay Meta's rate, 0% markup.",
+        content:
+          "WACheap (segera hadir): broadcast WhatsApp resmi untuk seller online, bayar tarif Meta tanpa markup.",
       },
     ],
     links: [
@@ -59,18 +64,16 @@ function RootComponent() {
       <HeadContent />
       <ThemeProvider
         attribute="class"
-        defaultTheme="dark"
+        defaultTheme="light"
         disableTransitionOnChange
         storageKey="vite-ui-theme"
       >
-        <div className="grid grid-rows-[auto_1fr] h-svh">
-          <Header />
-          <Outlet />
-        </div>
-        <Toaster richColors />
+        <Outlet />
+        <Toaster richColors position="top-center" />
       </ThemeProvider>
-      <TanStackRouterDevtools position="bottom-left" />
-      <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
+      <Suspense>
+        <Devtools />
+      </Suspense>
     </>
   );
 }
