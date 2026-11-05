@@ -14,6 +14,9 @@
 #   secrets: DOKU_CLIENT_ID (DOKU dashboard Client ID, "BRN-..."), DOKU_SECRET_KEY (DOKU Secret Key; also verifies the
 #            payment webhook at https://wacheap-api.dzulfikar-at.workers.dev/api/billing/webhook)
 #   vars:    DOKU_BASE_URL (empty = https://api.doku.com; https://api-sandbox.doku.com with sandbox keys)
+# WhatsApp webhook (optional; without both the webhook at /api/whatsapp/webhook answers 503):
+#   secrets: META_APP_SECRET (Meta app > Settings > Basic > App secret), WHATSAPP_VERIFY_TOKEN (any random string, also
+#            typed into Meta app > WhatsApp > Configuration > Verify token)
 name: Deploy
 
 on:
@@ -64,4 +67,6 @@ jobs:
           DOKU_CLIENT_ID: ${{ secrets.DOKU_CLIENT_ID }}
           DOKU_SECRET_KEY: ${{ secrets.DOKU_SECRET_KEY }}
           DOKU_BASE_URL: ${{ vars.DOKU_BASE_URL }}
+          META_APP_SECRET: ${{ secrets.META_APP_SECRET }}
+          WHATSAPP_VERIFY_TOKEN: ${{ secrets.WHATSAPP_VERIFY_TOKEN }}
         run: env -u npm_execpath node ./node_modules/alchemy/bin/cli.js deploy --stage production --yes --no-input

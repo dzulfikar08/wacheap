@@ -46,6 +46,17 @@ broadcast recipient lists are exactly that kind of query. Tests get their databa
 `@wacheap/db/test-d1` (never `createClient`), which throws what D1 throws. Caller-sized work goes through
 `packages/api/src/lib/d1.ts` (`insertChunked`, `readChunked`, `chunk`).
 
+## WhatsApp numbers and webhooks
+
+- A number is connected manually (`whatsapp.numbers.connect`) with its WABA ID, phone number ID, a system-user token
+  and the secret of the token's Meta app; Embedded Signup comes later (WAB-11). Token and app secret are AES-GCM sealed
+  (`packages/api/src/lib/whatsapp/seal.ts`, key from BETTER_AUTH_SECRET). Every Graph call carries appsecret_proof.
+- Each number gets its own webhook URL, `/api/whatsapp/webhook/<webhookKey>`, registered with Meta as a phone-number
+  override on connect, and verified with that number's app secret. A request there may only touch the same user's
+  numbers. `/api/whatsapp/webhook` (META_APP_SECRET, WHATSAPP_VERIFY_TOKEN) is this server's own app and routes by
+  phone_number_id. Template and account webhooks ignore overrides: poll Graph for template status.
+- `message` is unique on (number_id, wa_message_id), never on the wamid alone: a seller signs their own webhooks.
+
 ## Meta rules that shape the code
 
 - Message fees are billed by Meta to the customer's own WABA. We never resell or mark up messages.

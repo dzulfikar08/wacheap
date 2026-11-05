@@ -10,6 +10,7 @@ import {
   type LucideIcon,
   Megaphone,
   Menu,
+  Phone,
   ReceiptText,
   Users,
 } from "lucide-react";
@@ -31,8 +32,11 @@ const NAV: NavItem[] = [
   { to: "/api-key", label: "API key", icon: KeyRound },
 ];
 
-/** The WACheap subscription, kept apart from Biaya (what Meta bills per message). */
-const ACCOUNT_NAV: NavItem[] = [{ to: "/billing", label: "Langganan", icon: CreditCard }];
+/** Account setup: connected numbers, and the WACheap subscription (kept apart from Biaya, what Meta bills per message). */
+const ACCOUNT_NAV: NavItem[] = [
+  { to: "/nomor", label: "Nomor WhatsApp", icon: Phone },
+  { to: "/billing", label: "Langganan", icon: CreditCard },
+];
 
 function Brand({ onNavigate }: { onNavigate?: () => void }) {
   return (

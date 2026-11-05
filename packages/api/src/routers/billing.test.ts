@@ -9,6 +9,7 @@ import { d1TestDb } from "@wacheap/db/test-d1";
 import { eq } from "drizzle-orm";
 
 import { BILLING_OFF, type BillingConfig } from "../lib/billing/config";
+import { WHATSAPP_OFF } from "../lib/whatsapp/config";
 import { WEBHOOK_TARGET, signRequest } from "../lib/billing/doku";
 import { extendPaidUntil, trialEndsAt } from "../lib/billing/plan";
 import { handleDokuNotification } from "../lib/billing/store";
@@ -45,6 +46,7 @@ async function setup(billing: Partial<BillingConfig> = {}) {
     session: { user: { id, name: "Toko", email: `${id}@example.test` } } as unknown as Session,
     verifyHuman: async () => true,
     billing: config,
+    whatsapp: WHATSAPP_OFF,
   });
   return { db, calls, as };
 }

@@ -53,6 +53,9 @@ export const server = Cloudflare.Worker("server", {
     DOKU_SECRET_KEY: Config.Redacted("DOKU_SECRET_KEY").pipe(Config.withDefault("")),
     // Empty = DOKU production; https://api-sandbox.doku.com for the sandbox.
     DOKU_BASE_URL: Config.String("DOKU_BASE_URL").pipe(Config.withDefault("")),
+    // WhatsApp webhook at <server>/api/whatsapp/webhook. Optional: without them the webhook answers 503.
+    META_APP_SECRET: Config.Redacted("META_APP_SECRET").pipe(Config.withDefault("")),
+    WHATSAPP_VERIFY_TOKEN: Config.Redacted("WHATSAPP_VERIFY_TOKEN").pipe(Config.withDefault("")),
   },
   dev: {
     port: 3000,

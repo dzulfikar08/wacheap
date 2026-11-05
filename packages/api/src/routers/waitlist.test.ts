@@ -4,6 +4,7 @@ import { call } from "@orpc/server";
 import { d1TestDb } from "@wacheap/db/test-d1";
 
 import { BILLING_OFF } from "../lib/billing/config";
+import { WHATSAPP_OFF } from "../lib/whatsapp/config";
 import { normaliseWhatsapp, waitlistRouter } from "./waitlist";
 
 const human = async (token: string) => token === "ok";
@@ -30,7 +31,13 @@ describe("normaliseWhatsapp", () => {
 describe("waitlist.join", () => {
   test("stores one row per email, case-insensitively, and answers the same for a repeat", async () => {
     const { db, client } = await d1TestDb();
-    const context = { db, session: null, verifyHuman: human, billing: BILLING_OFF };
+    const context = {
+      db,
+      session: null,
+      verifyHuman: human,
+      billing: BILLING_OFF,
+      whatsapp: WHATSAPP_OFF,
+    };
     const first = await call(
       waitlistRouter.join,
       {
@@ -62,7 +69,15 @@ describe("waitlist.join", () => {
     await call(
       waitlistRouter.join,
       { turnstileToken: "ok", email: "  Seller@Example.TEST " },
-      { context: { db, session: null, verifyHuman: human, billing: BILLING_OFF } },
+      {
+        context: {
+          db,
+          session: null,
+          verifyHuman: human,
+          billing: BILLING_OFF,
+          whatsapp: WHATSAPP_OFF,
+        },
+      },
     );
     const rows = await client.execute("select email, whatsapp from waitlist");
     expect(rows.rows[0]).toMatchObject({ email: "seller@example.test", whatsapp: null });
@@ -74,7 +89,15 @@ describe("waitlist.join", () => {
       call(
         waitlistRouter.join,
         { turnstileToken: "ok", email: "a@b.test", whatsapp: "123" },
-        { context: { db, session: null, verifyHuman: human, billing: BILLING_OFF } },
+        {
+          context: {
+            db,
+            session: null,
+            verifyHuman: human,
+            billing: BILLING_OFF,
+            whatsapp: WHATSAPP_OFF,
+          },
+        },
       ),
     ).rejects.toThrow();
   });
@@ -87,7 +110,15 @@ describe("waitlist.join, Turnstile", () => {
       call(
         waitlistRouter.join,
         { turnstileToken: "bot", email: "bot@example.test" },
-        { context: { db, session: null, verifyHuman: human, billing: BILLING_OFF } },
+        {
+          context: {
+            db,
+            session: null,
+            verifyHuman: human,
+            billing: BILLING_OFF,
+            whatsapp: WHATSAPP_OFF,
+          },
+        },
       ),
     ).rejects.toThrow(/Verifikasi gagal/);
     expect((await client.execute("select count(*) as n from waitlist")).rows[0]!.n).toBe(0);
@@ -98,7 +129,13 @@ describe("waitlist.join, Turnstile", () => {
     const spy = async () => ((checked = true), true);
     await expect(
       call(waitlistRouter.join, { email: "a@example.test" } as never, {
-        context: { db, session: null, verifyHuman: spy, billing: BILLING_OFF },
+        context: {
+          db,
+          session: null,
+          verifyHuman: spy,
+          billing: BILLING_OFF,
+          whatsapp: WHATSAPP_OFF,
+        },
       }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
     expect(checked).toBe(false);

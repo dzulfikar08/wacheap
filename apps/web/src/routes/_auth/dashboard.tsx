@@ -29,10 +29,11 @@ function salam(now = new Date()) {
   return "Selamat malam";
 }
 
-const STEPS = [
+const STEPS: { title: string; body: string; to?: "/nomor" }[] = [
   {
     title: "Hubungkan nomor WhatsApp",
     body: "Sambungkan nomor bisnismu lewat WhatsApp Business Platform resmi dari Meta.",
+    to: "/nomor",
   },
   {
     title: "Unggah kontak",
@@ -51,6 +52,8 @@ const STEPS = [
 function Ringkasan() {
   const { session } = Route.useRouteContext();
   const name = session.data?.user.name.trim();
+  const numbers = useQuery(orpc.whatsapp.numbers.list.queryOptions());
+  const connected = (numbers.data?.length ?? 0) > 0;
 
   return (
     <>
@@ -83,9 +86,22 @@ function Ringkasan() {
                     <p className="font-medium">{step.title}</p>
                     <p className="text-sm text-muted-foreground">{step.body}</p>
                   </div>
-                  <Badge variant="secondary" className="mt-0.5 text-muted-foreground">
-                    Segera
-                  </Badge>
+                  {step.to && connected ? (
+                    <Badge variant="success" className="mt-0.5">
+                      Selesai
+                    </Badge>
+                  ) : step.to ? (
+                    <Link
+                      to={step.to}
+                      className={buttonVariants({ variant: "outline", size: "sm" })}
+                    >
+                      Mulai
+                    </Link>
+                  ) : (
+                    <Badge variant="secondary" className="mt-0.5 text-muted-foreground">
+                      Segera
+                    </Badge>
+                  )}
                 </li>
               ))}
             </ol>
